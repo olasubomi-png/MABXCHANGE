@@ -1,0 +1,78 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Gift, Home, List, User } from "lucide-react";
+import { DemoBanner } from "./demo-banner";
+
+const navItems = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/activity", label: "Activity", icon: List },
+  { href: "/rewards", label: "Rewards", icon: Gift },
+  { href: "/profile", label: "Profile", icon: User },
+] as const;
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[var(--mx-bg)]">
+      {/* Top header */}
+      <header className="sticky top-0 z-40 border-b border-[var(--mx-border)] bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4 sm:max-w-2xl sm:px-6">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="MABXCHANGE home">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mx-primary)] text-sm font-black text-white">
+              M
+            </span>
+            <span className="text-[15px] font-bold tracking-tight text-[var(--mx-text)]">
+              MAB<span className="text-[var(--mx-primary)]">XCHANGE</span>
+            </span>
+          </Link>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200">
+            Demo
+          </span>
+        </div>
+        <DemoBanner />
+      </header>
+
+      {/* Main content */}
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-[calc(var(--nav-height)+var(--safe-bottom)+1rem)] pt-5 sm:max-w-2xl sm:px-6">
+        {children}
+      </main>
+
+      {/* Mobile bottom navigation */}
+      <nav
+        className="mx-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mx-border)] bg-white/95 backdrop-blur-md"
+        aria-label="Main"
+      >
+        <div className="mx-auto flex h-[var(--nav-height)] max-w-lg items-stretch sm:max-w-2xl">
+          {navItems.map((item) => {
+            const active =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${
+                  active
+                    ? "text-[var(--mx-primary)]"
+                    : "text-[var(--mx-text-soft)] hover:text-[var(--mx-text-muted)]"
+                }`}
+              >
+                <Icon
+                  size={22}
+                  strokeWidth={active ? 2.5 : 2}
+                  absoluteStrokeWidth={false}
+                />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}

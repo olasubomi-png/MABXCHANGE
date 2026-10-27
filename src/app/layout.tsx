@@ -1,10 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { AppShell } from "@/components/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MABXCHANGE | Crypto, made clearer",
+  title: "MABXCHANGE | Crypto exchange demo",
   description:
-    "Explore a thoughtfully designed crypto exchange experience. Demo only; real-money trading is not enabled.",
+    "Premium crypto exchange dashboard demo. No real balances, deposits, or trades are enabled.",
+  applicationName: "MABXCHANGE",
+  icons: {
+    icon: "/favicon.ico",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#ffffff",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -12,7 +25,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
