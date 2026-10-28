@@ -22,12 +22,26 @@ export type AppUserRow = {
   updated_at?: string | Date | null;
 };
 
+/**
+ * Matches the real Neon `customer_accounts` table:
+ * id, user_id, asset_id, bucket (available|locked), balance, created_at, updated_at
+ * There is no status or currency column on this table.
+ */
 export type CustomerAccountRow = {
   id: string | number;
   user_id: string | number;
-  status: string | null;
-  currency: string | null;
+  asset_id: string | number;
+  bucket: "available" | "locked" | string;
+  balance: string | number;
   created_at: string | Date | null;
+  updated_at: string | Date | null;
+};
+
+export type CustomerAccountsSummary = {
+  /** All balance rows for the user (may be empty). */
+  accounts: CustomerAccountRow[];
+  /** True when at least one balance row exists. */
+  hasBalances: boolean;
 };
 
 /**
@@ -69,7 +83,6 @@ export async function ensureAppUser(params: {
 
   const existing = await getAppUserByAuthId(params.authUserId);
   if (existing) {
-    // Soft-update email/name on repeat sign-in when present
     if (
       (params.email && params.email !== existing.email) ||
       (params.displayName && params.displayName !== existing.display_name)
@@ -125,63 +138,68 @@ export async function ensureAppUser(params: {
 }
 
 /**
- * Fetch the customer's primary sandbox account.
+ * List all customer_accounts balance rows for an app user.
  * Always filtered by the authenticated app user id (never client-supplied alone).
+ * Does not invent rows. Throws on query failure so callers can surface errors.
  */
-export async function getCustomerAccountForUser(
+export async function getCustomerAccountsForUser(
   appUserId: string | number
-): Promise<CustomerAccountRow | null> {
+): Promise<CustomerAccountRow[]> {
+  if (appUserId === "" || appUserId === null || appUserId === undefined) {
+    throw new Error("appUserId is required");
+  }
+
   const sql = getDb();
   const rows = await sql`
     SELECT
       id,
       user_id,
-      status,
-      currency,
-      created_at
+      asset_id,
+      bucket,
+      balance,
+      created_at,
+      updated_at
     FROM customer_accounts
     WHERE user_id = ${appUserId}
-    ORDER BY created_at ASC
-    LIMIT 1
+    ORDER BY asset_id ASC, bucket ASC, created_at ASC
   `;
-  return (rows[0] as CustomerAccountRow) ?? null;
+  return rows as CustomerAccountRow[];
 }
 
 /**
- * Ensure a sandbox customer_accounts row exists for the app user.
- * Idempotent. If the table shape differs, returns null without throwing
- * so the UI can show a safe empty/fallback state.
+ * First balance row for the user, if any.
+ * Prefer getCustomerAccountsForUser for full state.
+ */
+export async function getCustomerAccountForUser(
+  appUserId: string | number
+): Promise<CustomerAccountRow | null> {
+  const accounts = await getCustomerAccountsForUser(appUserId);
+  return accounts[0] ?? null;
+}
+
+/**
+ * Look up existing sandbox/balance rows for the app user.
+ *
+ * Does NOT insert into customer_accounts. Balance rows require a valid seeded
+ * asset_id and a deliberate, validated provisioning operation. Auto-inserting
+ * with invented status/currency columns is invalid for the real schema.
+ *
+ * Returns a summary. Throws if the lookup fails so provisioning can report
+ * the error instead of pretending success.
  */
 export async function ensureSandboxAccount(
   appUserId: string | number
-): Promise<CustomerAccountRow | null> {
-  const existing = await getCustomerAccountForUser(appUserId);
-  if (existing) return existing;
-
-  try {
-    const sql = getDb();
-    // Minimal insert compatible with a typical sandbox schema.
-    // status defaults to sandbox; currency to NGN for the primary market.
-    const rows = await sql`
-      INSERT INTO customer_accounts (user_id, status, currency)
-      VALUES (${appUserId}, 'sandbox', 'NGN')
-      ON CONFLICT DO NOTHING
-      RETURNING id, user_id, status, currency, created_at
-    `;
-    if (rows[0]) return rows[0] as CustomerAccountRow;
-
-    // Some schemas use a unique(user_id) without ON CONFLICT target —
-    // re-read in case another request created the row.
-    return await getCustomerAccountForUser(appUserId);
-  } catch {
-    // Schema may not support this insert shape yet; do not invent success.
-    return null;
-  }
+): Promise<CustomerAccountsSummary> {
+  const accounts = await getCustomerAccountsForUser(appUserId);
+  return {
+    accounts,
+    hasBalances: accounts.length > 0,
+  };
 }
 
 /**
  * Full provisioning pipeline for an authenticated session.
- * Links Neon Auth user → app_users → optional sandbox customer_accounts.
+ * Links Neon Auth user → app_users → lookup of customer_accounts (read-only).
  * All authorization is based on session.user.id from the server.
  */
 export async function provisionAuthenticatedUser(sessionUser: {
@@ -190,7 +208,10 @@ export async function provisionAuthenticatedUser(sessionUser: {
   name?: string | null;
 }): Promise<{
   appUser: AppUserRow;
+  /** First balance row if any (legacy single-account consumers). */
   account: CustomerAccountRow | null;
+  accounts: CustomerAccountRow[];
+  hasBalances: boolean;
   dbError: string | null;
 }> {
   try {
@@ -200,14 +221,29 @@ export async function provisionAuthenticatedUser(sessionUser: {
       displayName: sessionUser.name ?? null,
     });
 
-    let account: CustomerAccountRow | null = null;
     try {
-      account = await ensureSandboxAccount(appUser.id);
-    } catch {
-      account = null;
+      const summary = await ensureSandboxAccount(appUser.id);
+      return {
+        appUser,
+        account: summary.accounts[0] ?? null,
+        accounts: summary.accounts,
+        hasBalances: summary.hasBalances,
+        dbError: null,
+      };
+    } catch (accountErr) {
+      const message =
+        accountErr instanceof Error
+          ? accountErr.message
+          : "Failed to load customer accounts";
+      // App user was provisioned; account lookup failed — report accurately.
+      return {
+        appUser,
+        account: null,
+        accounts: [],
+        hasBalances: false,
+        dbError: message,
+      };
     }
-
-    return { appUser, account, dbError: null };
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Database unavailable";
@@ -220,6 +256,8 @@ export async function provisionAuthenticatedUser(sessionUser: {
         created_at: null,
       },
       account: null,
+      accounts: [],
+      hasBalances: false,
       dbError: message,
     };
   }

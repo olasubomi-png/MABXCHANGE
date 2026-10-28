@@ -55,11 +55,12 @@ export default async function ProfilePage() {
     );
   }
 
-  const { appUser, account, dbError } = await provisionAuthenticatedUser({
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-  });
+  const { appUser, accounts, hasBalances, dbError } =
+    await provisionAuthenticatedUser({
+      id: session.user.id,
+      email: session.user.email,
+      name: session.user.name,
+    });
 
   const displayName =
     appUser.display_name ||
@@ -69,11 +70,11 @@ export default async function ProfilePage() {
   const email = appUser.email || session.user.email || "—";
   const initials = getInitials(displayName);
   const memberSince = formatAccountDate(appUser.created_at);
-  const sandboxStatus = account?.status
-    ? String(account.status)
-    : dbError
-      ? "unavailable"
-      : "sandbox · pending setup";
+  const accountStatus = dbError
+    ? "unavailable"
+    : hasBalances
+      ? "balances on file"
+      : "no funded balances";
 
   return (
     <div className="space-y-5">
@@ -117,19 +118,17 @@ export default async function ProfilePage() {
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-sm text-[var(--mx-text-muted)]">Account status</span>
           <span className="rounded-full bg-[var(--mx-warning-soft)] px-2.5 py-0.5 text-xs font-semibold capitalize text-[var(--mx-warning)] ring-1 ring-[var(--mx-warning)]/30">
-            {sandboxStatus}
+            {accountStatus}
           </span>
         </div>
-        {account?.currency && (
-          <div className="flex items-center justify-between px-4 py-3.5">
-            <span className="text-sm text-[var(--mx-text-muted)]">
-              Primary currency
-            </span>
-            <span className="text-sm font-medium text-[var(--mx-text)]">
-              {String(account.currency)}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-sm text-[var(--mx-text-muted)]">
+            Balance rows
+          </span>
+          <span className="text-sm font-medium text-[var(--mx-text)]">
+            {accounts.length}
+          </span>
+        </div>
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-sm text-[var(--mx-text-muted)]">Auth provider</span>
           <span className="text-sm font-medium text-[var(--mx-text)]">
