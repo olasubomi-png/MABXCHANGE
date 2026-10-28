@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSupportedCoinId } from "@/lib/coingecko";
 import {
-  fetchBinanceKlines,
+  fetchOhlc,
   isCandleInterval,
   scaleCandles,
   type CandleInterval,
@@ -12,11 +12,14 @@ export const revalidate = 30;
 
 /**
  * GET /api/market/ohlc?id=bitcoin&interval=1h&vs=usd|ngn
- * OHLC from Binance public klines. Optional NGN scale via CoinGecko USDT/NGN when key present.
+ * Providers: Kraken (primary) → CoinGecko Demo OHLC (fallback).
+ * Binance is not used.
  */
 export async function GET(req: NextRequest) {
   const id = (req.nextUrl.searchParams.get("id") || "").trim().toLowerCase();
-  const intervalParam = (req.nextUrl.searchParams.get("interval") || "1h").toLowerCase();
+  const intervalParam = (
+    req.nextUrl.searchParams.get("interval") || "1h"
+  ).toLowerCase();
   const vsParam = (req.nextUrl.searchParams.get("vs") || "usd").toLowerCase();
   const vs = vsParam === "ngn" ? "ngn" : "usd";
 
@@ -43,10 +46,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await fetchBinanceKlines(id, intervalParam as CandleInterval);
+    const result = await fetchOhlc(
+      id,
+      intervalParam as CandleInterval,
+      vs
+    );
 
-    if (vs === "ngn") {
-      // Scale by USDT→NGN from CoinGecko when key is available
+    // Kraken returns USD; scale to NGN via CoinGecko USDT/NGN when requested
+    if (vs === "ngn" && result.source === "kraken") {
       let rate: number | null = null;
       const key = process.env.COINGECKO_API_KEY?.trim();
       if (key) {
@@ -96,7 +103,7 @@ export async function GET(req: NextRequest) {
           fxUnavailable: true,
           note:
             (result.note ?? "") +
-            " NGN conversion unavailable — showing USDT/USD candles.",
+            " NGN conversion unavailable — showing USD candles.",
         },
         {
           headers: {
@@ -107,7 +114,10 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { ...result, vsCurrency: "usd" },
+      {
+        ...result,
+        vsCurrency: vs,
+      },
       {
         headers: {
           "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
@@ -119,11 +129,15 @@ export async function GET(req: NextRequest) {
       err instanceof Error ? err.message : "Failed to fetch OHLC";
     const status = message.includes("rate limit")
       ? 429
-      : message.includes("not available")
+      : message.includes("not available") || message.includes("stablecoin")
         ? 404
         : 502;
     return NextResponse.json(
-      { error: "OHLC unavailable", code: "UPSTREAM_ERROR", message },
+      {
+        error: "OHLC unavailable",
+        code: "UPSTREAM_ERROR",
+        message,
+      },
       { status }
     );
   }

@@ -62,7 +62,7 @@ export default function MarketCoinPage() {
   const coinId = String(params?.coinId ?? "").toLowerCase();
   const supported = isSupportedCoinId(coinId);
   const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
-  const hasOhlc = Boolean(meta?.binanceSymbol);
+  const hasOhlc = Boolean(meta && meta.symbol !== "USDT" && meta.symbol !== "USDC");
 
   const { currency } = useCurrency();
   const vs = currency === "NGN" ? "ngn" : "usd";
@@ -322,7 +322,7 @@ export default function MarketCoinPage() {
 
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
           {fetchedAt
-            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · Binance public OHLC`
+            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · Kraken / CoinGecko OHLC`
             : "Market data · Not investment advice"}
         </p>
       </div>

@@ -1,11 +1,12 @@
 /**
- * OHLC helpers — aggregation, SMA/EMA, interval validation.
+ * OHLC helpers and provider mapping.
  * Run: npx tsx src/lib/__tests__/ohlc.test.ts
  */
 import {
   aggregateCandles,
   computeEMA,
   computeSMA,
+  getKrakenPairForCoinId,
   isCandleInterval,
   type OhlcCandle,
 } from "../ohlc";
@@ -17,6 +18,10 @@ function assert(cond: boolean, msg: string) {
 
 assert(isCandleInterval("1m") && isCandleInterval("1w"), "intervals ok");
 assert(!isCandleInterval("2h"), "reject 2h");
+
+assert(getKrakenPairForCoinId("bitcoin") === "XBTUSD", "BTC pair");
+assert(getKrakenPairForCoinId("ethereum") === "ETHUSD", "ETH pair");
+assert(getKrakenPairForCoinId("tether") === null, "no tether pair");
 
 const sample: OhlcCandle[] = [
   { time: 0, open: 10, high: 12, low: 9, close: 11, volume: 1 },
@@ -37,5 +42,8 @@ assert(Math.abs(sma[0].value - 11.5) < 1e-9, "SMA first value");
 
 const ema = computeEMA(sample, 2);
 assert(ema.length >= 1, "EMA produces values");
+
+// Malformed / empty aggregation
+assert(aggregateCandles([], 60).length === 0, "empty aggregate");
 
 console.log("\nAll OHLC checks passed.");

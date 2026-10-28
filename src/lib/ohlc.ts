@@ -1,7 +1,8 @@
 /**
- * Server-only OHLC provider using Binance public klines.
- * No API key required for public market data.
- * Never import from Client Components.
+ * Server-only OHLC providers.
+ * Primary: Kraken public OHLC (no API key, typically reachable from Vercel).
+ * Fallback: CoinGecko Demo /coins/{id}/ohlc (requires COINGECKO_API_KEY).
+ * Binance is not used (HTTP 451 / geo restrictions on many hosts).
  */
 
 import { SUPPORTED_ASSETS } from "./assets";
@@ -39,51 +40,70 @@ export type OhlcCandle = {
   volume: number;
 };
 
+export type OhlcSource = "kraken" | "coingecko";
+
 export type OhlcResult = {
   coinId: string;
   symbol: string;
-  binanceSymbol: string;
+  pair: string;
   interval: CandleInterval;
-  /** Candles denominated in USDT ≈ USD */
   candles: OhlcCandle[];
   fetchedAt: string;
-  source: "binance";
-  delayed: false;
+  source: OhlcSource;
+  delayed: boolean;
   note?: string;
 };
 
-const BINANCE = "https://api.binance.com/api/v3";
+/** Kraken pair ids for USD markets */
+const KRAKEN_PAIRS: Record<string, string> = {
+  bitcoin: "XBTUSD",
+  ethereum: "ETHUSD",
+  solana: "SOLUSD",
+  ripple: "XRPUSD",
+  dogecoin: "DOGEUSD",
+  // BNB may be listed as BNBUSD on Kraken
+  binancecoin: "BNBUSD",
+};
 
-/** Reasonable history depth per interval */
-function limitFor(interval: CandleInterval): number {
+/** Kraken interval query values in minutes */
+const KRAKEN_INTERVAL_MIN: Record<CandleInterval, number> = {
+  "1m": 1,
+  "5m": 5,
+  "15m": 15,
+  "1h": 60,
+  "4h": 240,
+  "1d": 1440,
+  "1w": 10080,
+};
+
+/**
+ * CoinGecko /ohlc `days` for coarse history. Granularity is fixed by CoinGecko:
+ * 1–2 days → ~30m, 3–30 days → ~4h, 31+ → ~4d.
+ * Only use when the requested interval matches that granularity.
+ */
+function coingeckoDaysForInterval(
+  interval: CandleInterval
+): { days: string; actualGranularity: string } | null {
   switch (interval) {
-    case "1m":
-      return 500;
-    case "5m":
-      return 500;
-    case "15m":
-      return 400;
     case "1h":
-      return 500;
+      // days=1 → ~30-minute candles (closest; note in response)
+      return { days: "1", actualGranularity: "≈30m (CoinGecko auto)" };
     case "4h":
-      return 400;
+      return { days: "14", actualGranularity: "≈4h (CoinGecko auto)" };
     case "1d":
-      return 365;
+      return { days: "90", actualGranularity: "≈4d buckets approximating daily span" };
     case "1w":
-      return 200;
+      return { days: "365", actualGranularity: "≈4d (CoinGecko auto)" };
     default:
-      return 300;
+      // 1m / 5m / 15m not available on CoinGecko OHLC
+      return null;
   }
 }
 
-export function getBinanceSymbolForCoinId(coinId: string): string | null {
-  const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
-  return meta?.binanceSymbol ?? null;
+export function getKrakenPairForCoinId(coinId: string): string | null {
+  return KRAKEN_PAIRS[coinId] ?? null;
 }
 
-/**
- * Aggregate finer OHLC bars into coarser ones (open=first open, high=max, low=min, close=last close, volume=sum).
- */
 export function aggregateCandles(
   candles: OhlcCandle[],
   bucketSeconds: number
@@ -105,7 +125,6 @@ export function aggregateCandles(
   return Array.from(map.values()).sort((a, b) => a.time - b.time);
 }
 
-/** Simple moving average of closes */
 export function computeSMA(
   candles: OhlcCandle[],
   period: number
@@ -123,7 +142,6 @@ export function computeSMA(
   return out;
 }
 
-/** Exponential moving average of closes */
 export function computeEMA(
   candles: OhlcCandle[],
   period: number
@@ -141,9 +159,6 @@ export function computeEMA(
   return out;
 }
 
-/**
- * Scale USDT/USD-denominated candles by a multiplier (e.g. USD→NGN rate).
- */
 export function scaleCandles(
   candles: OhlcCandle[],
   rate: number
@@ -159,84 +174,263 @@ export function scaleCandles(
   }));
 }
 
-type BinanceKline = [
-  number, // open time ms
-  string, // open
-  string, // high
-  string, // low
-  string, // close
-  string, // volume
-  number, // close time
-  string,
-  number,
-  string,
-  string,
-  string
-];
+function normalizeCandles(raw: OhlcCandle[]): OhlcCandle[] {
+  const cleaned = raw
+    .filter(
+      (c) =>
+        Number.isFinite(c.time) &&
+        Number.isFinite(c.open) &&
+        Number.isFinite(c.high) &&
+        Number.isFinite(c.low) &&
+        Number.isFinite(c.close) &&
+        c.time > 0
+    )
+    .map((c) => ({
+      time: Math.floor(c.time),
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: Number.isFinite(c.volume) ? c.volume : 0,
+    }));
+  cleaned.sort((a, b) => a.time - b.time);
+  // de-dupe by time keeping last
+  const byTime = new Map<number, OhlcCandle>();
+  for (const c of cleaned) byTime.set(c.time, c);
+  return Array.from(byTime.values()).sort((a, b) => a.time - b.time);
+}
 
-export async function fetchBinanceKlines(
+class ProviderHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function fetchKrakenOhlc(
   coinId: string,
   interval: CandleInterval
 ): Promise<OhlcResult> {
-  const binanceSymbol = getBinanceSymbolForCoinId(coinId);
-  if (!binanceSymbol) {
-    throw new Error("OHLC not available for this asset");
+  const pair = getKrakenPairForCoinId(coinId);
+  if (!pair) {
+    throw new Error("No Kraken USD pair for this asset");
   }
-  if (!isCandleInterval(interval)) {
-    throw new Error("Invalid interval");
-  }
+  const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
+  if (!meta) throw new Error("Unknown asset");
 
-  const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId)!;
-  const limit = limitFor(interval);
+  const intervalMin = KRAKEN_INTERVAL_MIN[interval];
   const params = new URLSearchParams({
-    symbol: binanceSymbol,
-    interval,
-    limit: String(limit),
+    pair,
+    interval: String(intervalMin),
   });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const res = await fetch(`${BINANCE}/klines?${params.toString()}`, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-      next: { revalidate: 30 },
-    });
+    const res = await fetch(
+      `https://api.kraken.com/0/public/OHLC?${params.toString()}`,
+      {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+        next: { revalidate: 30 },
+      }
+    );
 
+    if (res.status === 451) {
+      throw new ProviderHttpError(451, "Kraken unavailable in this region (451)");
+    }
     if (res.status === 429) {
-      throw new Error("Binance rate limit exceeded. Try again shortly.");
+      throw new ProviderHttpError(429, "Kraken rate limit exceeded");
     }
     if (!res.ok) {
-      throw new Error(`Binance error ${res.status}`);
+      throw new ProviderHttpError(res.status, `Kraken error ${res.status}`);
     }
 
-    const raw = (await res.json()) as BinanceKline[];
-    if (!Array.isArray(raw)) {
-      throw new Error("Unexpected Binance klines response");
+    const body = (await res.json()) as {
+      error?: string[];
+      result?: Record<string, unknown>;
+    };
+
+    if (body.error && body.error.length > 0) {
+      throw new Error(body.error.join("; ") || "Kraken API error");
     }
 
-    const candles: OhlcCandle[] = raw.map((row) => ({
-      time: Math.floor(row[0] / 1000),
-      open: Number(row[1]),
-      high: Number(row[2]),
-      low: Number(row[3]),
-      close: Number(row[4]),
-      volume: Number(row[5]),
-    }));
+    const result = body.result ?? {};
+    // Find the array of candles (key is pair name, not always exact input)
+    let rows: unknown[] | null = null;
+    for (const [key, val] of Object.entries(result)) {
+      if (key === "last") continue;
+      if (Array.isArray(val)) {
+        rows = val;
+        break;
+      }
+    }
+    if (!rows || rows.length === 0) {
+      throw new Error("Kraken returned no OHLC rows");
+    }
+
+    const candles: OhlcCandle[] = rows.map((row) => {
+      const r = row as (string | number)[];
+      return {
+        time: Number(r[0]),
+        open: Number(r[1]),
+        high: Number(r[2]),
+        low: Number(r[3]),
+        close: Number(r[4]),
+        volume: Number(r[6] ?? 0),
+      };
+    });
+
+    const normalized = normalizeCandles(candles);
+    if (normalized.length < 2) {
+      throw new Error("Insufficient Kraken OHLC data");
+    }
 
     return {
       coinId,
       symbol: meta.symbol,
-      binanceSymbol,
+      pair,
       interval,
-      candles,
+      candles: normalized,
       fetchedAt: new Date().toISOString(),
-      source: "binance",
+      source: "kraken",
       delayed: false,
-      note: "USDT spot prices from Binance public API (≈ USD).",
+      note: "OHLC from Kraken public API (USD).",
     };
   } finally {
     clearTimeout(timeout);
   }
 }
+
+async function fetchCoingeckoOhlc(
+  coinId: string,
+  interval: CandleInterval,
+  vsCurrency: "usd" | "ngn"
+): Promise<OhlcResult> {
+  const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
+  if (!meta) throw new Error("Unknown asset");
+
+  const mapping = coingeckoDaysForInterval(interval);
+  if (!mapping) {
+    throw new Error(
+      `CoinGecko OHLC does not support ${interval}; use Kraken for short intervals`
+    );
+  }
+
+  const key = process.env.COINGECKO_API_KEY?.trim();
+  if (!key) {
+    throw new Error("COINGECKO_API_KEY is not configured");
+  }
+
+  const params = new URLSearchParams({
+    vs_currency: vsCurrency,
+    days: mapping.days,
+  });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  try {
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(coinId)}/ohlc?${params}`,
+      {
+        signal: controller.signal,
+        headers: {
+          Accept: "application/json",
+          "x-cg-demo-api-key": key,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+
+    if (res.status === 429) {
+      throw new ProviderHttpError(429, "CoinGecko rate limit exceeded");
+    }
+    if (res.status === 451) {
+      throw new ProviderHttpError(451, "CoinGecko unavailable (451)");
+    }
+    if (!res.ok) {
+      throw new ProviderHttpError(res.status, `CoinGecko error ${res.status}`);
+    }
+
+    const data = (await res.json()) as number[][];
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("CoinGecko returned empty OHLC");
+    }
+
+    // [timestamp_ms, open, high, low, close] — no volume on this endpoint
+    const candles: OhlcCandle[] = data.map((row) => ({
+      time: Math.floor(Number(row[0]) / 1000),
+      open: Number(row[1]),
+      high: Number(row[2]),
+      low: Number(row[3]),
+      close: Number(row[4]),
+      volume: 0,
+    }));
+
+    const normalized = normalizeCandles(candles);
+    if (normalized.length < 2) {
+      throw new Error("Insufficient CoinGecko OHLC data");
+    }
+
+    return {
+      coinId,
+      symbol: meta.symbol,
+      pair: `${coinId}/${vsCurrency}`,
+      interval,
+      candles: normalized,
+      fetchedAt: new Date().toISOString(),
+      source: "coingecko",
+      delayed: true,
+      note: `CoinGecko Demo OHLC · ${mapping.actualGranularity} · may be delayed`,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Fetch OHLC: Kraken first (all listed intervals), then CoinGecko for supported coarse ranges.
+ * Does not call Binance.
+ */
+export async function fetchOhlc(
+  coinId: string,
+  interval: CandleInterval,
+  vsCurrency: "usd" | "ngn" = "usd"
+): Promise<OhlcResult> {
+  const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
+  if (!meta) throw new Error("Unknown asset");
+
+  // Stables: no meaningful OHLC pair
+  if (meta.symbol === "USDT" || meta.symbol === "USDC") {
+    throw new Error("OHLC not available for stablecoins");
+  }
+
+  const errors: string[] = [];
+
+  // 1) Kraken (USD). For NGN we scale later in the route.
+  try {
+    return await fetchKrakenOhlc(coinId, interval);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Kraken failed";
+    errors.push(`Kraken: ${msg}`);
+    // Do not loop on 451
+  }
+
+  // 2) CoinGecko fallback when interval is representable
+  try {
+    // Prefer native vs_currency when possible
+    return await fetchCoingeckoOhlc(coinId, interval, vsCurrency === "ngn" ? "ngn" : "usd");
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "CoinGecko failed";
+    errors.push(`CoinGecko: ${msg}`);
+  }
+
+  throw new Error(
+    `Chart data unavailable. ${errors.join(" · ")}`
+  );
+}
+
+export { ProviderHttpError };
