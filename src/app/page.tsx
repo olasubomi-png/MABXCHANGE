@@ -27,7 +27,6 @@ export default async function HomePage() {
   });
 
   const displayName =
-    appUser.display_name ||
     session.user.name ||
     session.user.email?.split("@")[0] ||
     null;

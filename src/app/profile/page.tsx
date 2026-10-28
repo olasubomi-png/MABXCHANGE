@@ -63,18 +63,24 @@ export default async function ProfilePage() {
     });
 
   const displayName =
-    appUser.display_name ||
     session.user.name ||
     session.user.email?.split("@")[0] ||
     "User";
   const email = appUser.email || session.user.email || "—";
   const initials = getInitials(displayName);
   const memberSince = formatAccountDate(appUser.created_at);
+  // Real app_users.status when provisioned; unfunded is not a DB error
+  const appStatus = appUser.id ? String(appUser.status) : null;
   const accountStatus = dbError
     ? "unavailable"
+    : appStatus
+      ? appStatus
+      : "pending";
+  const balanceLabel = dbError
+    ? "—"
     : hasBalances
-      ? "balances on file"
-      : "no funded balances";
+      ? `${accounts.length} balance row${accounts.length === 1 ? "" : "s"}`
+      : "No funded balances";
 
   return (
     <div className="space-y-5">
@@ -117,16 +123,14 @@ export default async function ProfilePage() {
         </div>
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-sm text-[var(--mx-text-muted)]">Account status</span>
-          <span className="rounded-full bg-[var(--mx-warning-soft)] px-2.5 py-0.5 text-xs font-semibold capitalize text-[var(--mx-warning)] ring-1 ring-[var(--mx-warning)]/30">
+          <span className="rounded-full bg-[var(--mx-primary-soft)] px-2.5 py-0.5 text-xs font-semibold capitalize text-[var(--mx-primary)] ring-1 ring-[var(--mx-primary)]/30">
             {accountStatus}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-sm text-[var(--mx-text-muted)]">
-            Balance rows
-          </span>
+          <span className="text-sm text-[var(--mx-text-muted)]">Funding</span>
           <span className="text-sm font-medium text-[var(--mx-text)]">
-            {accounts.length}
+            {balanceLabel}
           </span>
         </div>
         <div className="flex items-center justify-between px-4 py-3.5">

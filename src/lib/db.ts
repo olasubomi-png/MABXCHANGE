@@ -13,19 +13,32 @@ export function getDb() {
   return neon(url);
 }
 
+/**
+ * Neon Managed Auth provider key stored in app_users.auth_provider.
+ * Must stay stable across deploys so (auth_provider, auth_subject) remains unique.
+ */
+export const AUTH_PROVIDER_NEON = "neon" as const;
+
+export type AppUserStatus = "pending" | "active" | "restricted" | "closed";
+
+/**
+ * Matches production Neon `app_users`:
+ * id UUID, auth_provider, auth_subject, email, status, created_at, updated_at
+ * Unique (auth_provider, auth_subject). No auth_user_id or display_name columns.
+ */
 export type AppUserRow = {
-  id: string | number;
-  auth_user_id: string;
+  id: string;
+  auth_provider: string;
+  auth_subject: string;
   email: string | null;
-  display_name: string | null;
+  status: AppUserStatus | string;
   created_at: string | Date | null;
-  updated_at?: string | Date | null;
+  updated_at: string | Date | null;
 };
 
 /**
- * Matches the real Neon `customer_accounts` table:
- * id, user_id, asset_id, bucket (available|locked), balance, created_at, updated_at
- * There is no status or currency column on this table.
+ * Matches production Neon `customer_accounts`:
+ * id, user_id → app_users.id, asset_id, bucket, balance, created_at, updated_at
  */
 export type CustomerAccountRow = {
   id: string | number;
@@ -38,68 +51,83 @@ export type CustomerAccountRow = {
 };
 
 export type CustomerAccountsSummary = {
-  /** All balance rows for the user (may be empty). */
   accounts: CustomerAccountRow[];
-  /** True when at least one balance row exists. */
   hasBalances: boolean;
 };
 
 /**
- * Fetch the application user row linked to a Neon Auth user id.
- * Authorization is always performed with the session user id from the server.
+ * Fetch app_users by Neon Auth session subject (session.user.id).
  */
-export async function getAppUserByAuthId(
-  authUserId: string
+export async function getAppUserByAuthSubject(
+  authSubject: string,
+  authProvider: string = AUTH_PROVIDER_NEON
 ): Promise<AppUserRow | null> {
+  if (!authSubject) {
+    throw new Error("authSubject is required");
+  }
   const sql = getDb();
   const rows = await sql`
     SELECT
       id,
-      auth_user_id,
+      auth_provider,
+      auth_subject,
       email,
-      display_name,
+      status,
       created_at,
       updated_at
     FROM app_users
-    WHERE auth_user_id = ${authUserId}
+    WHERE auth_provider = ${authProvider}
+      AND auth_subject = ${authSubject}
     LIMIT 1
   `;
   return (rows[0] as AppUserRow) ?? null;
 }
 
+/** @deprecated Use getAppUserByAuthSubject — kept for call-site migration */
+export async function getAppUserByAuthId(
+  authUserId: string
+): Promise<AppUserRow | null> {
+  return getAppUserByAuthSubject(authUserId, AUTH_PROVIDER_NEON);
+}
+
 /**
- * Ensure an app_users row exists for the authenticated user.
- * Safe on every sign-in (Google or email). Idempotent via unique auth_user_id.
+ * Ensure an app_users row exists for the authenticated Neon Auth user.
+ * Idempotent via UNIQUE (auth_provider, auth_subject).
  * Never accepts a client-supplied user id for authorization.
  */
 export async function ensureAppUser(params: {
-  authUserId: string;
-  email: string;
-  displayName?: string | null;
+  /** Neon Auth session.user.id → stored as auth_subject */
+  authSubject: string;
+  email?: string | null;
+  authProvider?: string;
+  /** Initial status for new rows only */
+  status?: AppUserStatus;
 }): Promise<AppUserRow> {
-  if (!params.authUserId) {
-    throw new Error("authUserId is required for account provisioning");
+  const authSubject = params.authSubject;
+  if (!authSubject) {
+    throw new Error("authSubject is required for account provisioning");
   }
+  const authProvider = params.authProvider ?? AUTH_PROVIDER_NEON;
+  const email = params.email?.trim() ? params.email.trim() : null;
+  const initialStatus: AppUserStatus = params.status ?? "active";
 
-  const existing = await getAppUserByAuthId(params.authUserId);
+  const existing = await getAppUserByAuthSubject(authSubject, authProvider);
   if (existing) {
-    if (
-      (params.email && params.email !== existing.email) ||
-      (params.displayName && params.displayName !== existing.display_name)
-    ) {
+    if (email && email !== existing.email) {
       const sql = getDb();
       const updated = await sql`
         UPDATE app_users
         SET
-          email = COALESCE(${params.email || null}, email),
-          display_name = COALESCE(${params.displayName ?? null}, display_name),
+          email = ${email},
           updated_at = NOW()
-        WHERE auth_user_id = ${params.authUserId}
+        WHERE auth_provider = ${authProvider}
+          AND auth_subject = ${authSubject}
         RETURNING
           id,
-          auth_user_id,
+          auth_provider,
+          auth_subject,
           email,
-          display_name,
+          status,
           created_at,
           updated_at
       `;
@@ -110,22 +138,23 @@ export async function ensureAppUser(params: {
 
   const sql = getDb();
   const rows = await sql`
-    INSERT INTO app_users (auth_user_id, email, display_name)
+    INSERT INTO app_users (auth_provider, auth_subject, email, status)
     VALUES (
-      ${params.authUserId},
-      ${params.email},
-      ${params.displayName ?? null}
+      ${authProvider},
+      ${authSubject},
+      ${email},
+      ${initialStatus}
     )
-    ON CONFLICT (auth_user_id) DO UPDATE
+    ON CONFLICT (auth_provider, auth_subject) DO UPDATE
       SET
         email = COALESCE(EXCLUDED.email, app_users.email),
-        display_name = COALESCE(EXCLUDED.display_name, app_users.display_name),
         updated_at = NOW()
     RETURNING
       id,
-      auth_user_id,
+      auth_provider,
+      auth_subject,
       email,
-      display_name,
+      status,
       created_at,
       updated_at
   `;
@@ -138,9 +167,8 @@ export async function ensureAppUser(params: {
 }
 
 /**
- * List all customer_accounts balance rows for an app user.
- * Always filtered by the authenticated app user id (never client-supplied alone).
- * Does not invent rows. Throws on query failure so callers can surface errors.
+ * List customer_accounts for an app_users.id (UUID).
+ * Throws on query failure. Does not invent rows.
  */
 export async function getCustomerAccountsForUser(
   appUserId: string | number
@@ -166,10 +194,6 @@ export async function getCustomerAccountsForUser(
   return rows as CustomerAccountRow[];
 }
 
-/**
- * First balance row for the user, if any.
- * Prefer getCustomerAccountsForUser for full state.
- */
 export async function getCustomerAccountForUser(
   appUserId: string | number
 ): Promise<CustomerAccountRow | null> {
@@ -178,14 +202,7 @@ export async function getCustomerAccountForUser(
 }
 
 /**
- * Look up existing sandbox/balance rows for the app user.
- *
- * Does NOT insert into customer_accounts. Balance rows require a valid seeded
- * asset_id and a deliberate, validated provisioning operation. Auto-inserting
- * with invented status/currency columns is invalid for the real schema.
- *
- * Returns a summary. Throws if the lookup fails so provisioning can report
- * the error instead of pretending success.
+ * Read-only lookup of balance rows. Does not INSERT into customer_accounts.
  */
 export async function ensureSandboxAccount(
   appUserId: string | number
@@ -198,9 +215,8 @@ export async function ensureSandboxAccount(
 }
 
 /**
- * Full provisioning pipeline for an authenticated session.
- * Links Neon Auth user → app_users → lookup of customer_accounts (read-only).
- * All authorization is based on session.user.id from the server.
+ * Provision app_users from server session, then read customer_accounts.
+ * sessionUser.id → auth_subject. Never trusts client-supplied ids.
  */
 export async function provisionAuthenticatedUser(sessionUser: {
   id: string;
@@ -208,7 +224,6 @@ export async function provisionAuthenticatedUser(sessionUser: {
   name?: string | null;
 }): Promise<{
   appUser: AppUserRow;
-  /** First balance row if any (legacy single-account consumers). */
   account: CustomerAccountRow | null;
   accounts: CustomerAccountRow[];
   hasBalances: boolean;
@@ -216,9 +231,10 @@ export async function provisionAuthenticatedUser(sessionUser: {
 }> {
   try {
     const appUser = await ensureAppUser({
-      authUserId: sessionUser.id,
-      email: sessionUser.email ?? "",
-      displayName: sessionUser.name ?? null,
+      authSubject: sessionUser.id,
+      email: sessionUser.email ?? null,
+      authProvider: AUTH_PROVIDER_NEON,
+      status: "active",
     });
 
     try {
@@ -235,7 +251,6 @@ export async function provisionAuthenticatedUser(sessionUser: {
         accountErr instanceof Error
           ? accountErr.message
           : "Failed to load customer accounts";
-      // App user was provisioned; account lookup failed — report accurately.
       return {
         appUser,
         account: null,
@@ -250,10 +265,12 @@ export async function provisionAuthenticatedUser(sessionUser: {
     return {
       appUser: {
         id: "",
-        auth_user_id: sessionUser.id,
+        auth_provider: AUTH_PROVIDER_NEON,
+        auth_subject: sessionUser.id,
         email: sessionUser.email ?? null,
-        display_name: sessionUser.name ?? null,
+        status: "pending",
         created_at: null,
+        updated_at: null,
       },
       account: null,
       accounts: [],
@@ -263,7 +280,6 @@ export async function provisionAuthenticatedUser(sessionUser: {
   }
 }
 
-/** Initials helper (first letters of up to two name parts). */
 export function getInitials(name: string | null | undefined): string {
   if (!name || !name.trim()) return "U";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -271,7 +287,6 @@ export function getInitials(name: string | null | undefined): string {
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
-/** Format a date for profile display. */
 export function formatAccountDate(
   value: string | Date | null | undefined
 ): string {

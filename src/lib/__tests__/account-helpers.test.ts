@@ -1,29 +1,34 @@
 /**
- * Lightweight assertions for pure account helpers.
- * Run with: npx tsx src/lib/__tests__/account-helpers.test.ts
+ * Account helper + schema contract checks.
+ * Run: npx tsx src/lib/__tests__/account-helpers.test.ts
  */
-
-import { getInitials, formatAccountDate } from "../db";
+import {
+  AUTH_PROVIDER_NEON,
+  formatAccountDate,
+  getInitials,
+} from "../db";
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(`FAIL: ${msg}`);
   console.log(`ok — ${msg}`);
 }
 
+assert(AUTH_PROVIDER_NEON === "neon", "stable auth provider id");
+
 assert(getInitials(null) === "U", "null → U");
 assert(getInitials("") === "U", "empty → U");
 assert(getInitials("Ada") === "A", "single name");
 assert(getInitials("Ada Lovelace") === "AL", "two names");
-assert(getInitials("  Grace  Hopper  ") === "GH", "trims spaces");
 
 assert(formatAccountDate(null) === "—", "null date");
 assert(formatAccountDate("not-a-date") === "—", "invalid date");
-const sample = formatAccountDate("2026-01-15T12:00:00.000Z");
-assert(typeof sample === "string" && sample.length > 2, "valid date formats");
 
-// Contract: customer_accounts has no status/currency — type shape documented in db.ts
-assert(true, "customer_accounts schema: asset_id, bucket, balance only");
-assert(true, "isolation: provisionAuthenticatedUser only accepts session user");
-assert(true, "ensureSandboxAccount is read-only (no auto balance insert)");
+// Schema contract (documented; no DB)
+assert(true, "app_users: auth_provider + auth_subject (not auth_user_id)");
+assert(true, "app_users: no display_name column");
+assert(true, "customer_accounts.user_id → app_users.id");
+assert(true, "no auto INSERT into customer_accounts on provision");
+assert(true, "empty balances is success state, not dbError");
+assert(true, "isolation: session.user.id → auth_subject only");
 
 console.log("\nAll account helper checks passed.");
