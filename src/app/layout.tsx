@@ -8,7 +8,9 @@ export const metadata: Metadata = {
     "Premium crypto exchange dashboard demo. No real balances, deposits, or trades are enabled.",
   applicationName: "MABXCHANGE",
   icons: {
-    icon: "/favicon.ico",
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 

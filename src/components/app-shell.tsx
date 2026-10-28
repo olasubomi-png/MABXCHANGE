@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Gift, Home, List, User } from "lucide-react";
+import { BrandMark } from "./brand-mark";
 import { DemoBanner } from "./demo-banner";
 
 const navItems = [
@@ -20,14 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-[var(--mx-bg)]">
       <header className="sticky top-0 z-40 border-b border-[var(--mx-border)] bg-[var(--mx-surface)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4 sm:max-w-2xl sm:px-6">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="MABXCHANGE home">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mx-primary)] text-sm font-black text-white">
-              M
-            </span>
-            <span className="text-[15px] font-bold tracking-tight text-[var(--mx-text)]">
-              MAB<span className="text-[var(--mx-primary)]">XCHANGE</span>
-            </span>
-          </Link>
+          <BrandMark size="sm" showWordmark href="/" />
           <span className="rounded-full bg-[var(--mx-warning-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mx-warning)] ring-1 ring-[var(--mx-warning)]/30">
             Demo
           </span>

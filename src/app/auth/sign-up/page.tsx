@@ -6,6 +6,8 @@ import { Suspense, useState } from "react";
 import { Loader2, Lock, Mail, User } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { DemoBanner } from "@/components/demo-banner";
+import { BrandMark } from "@/components/brand-mark";
+import { BrandLoader } from "@/components/brand-loader";
 
 function SignUpForm() {
   const router = useRouter();
@@ -53,16 +55,16 @@ function SignUpForm() {
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6 px-4 py-8">
-      <div className="text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--mx-primary)] text-lg font-black text-white">
-          M
+      <div className="flex flex-col items-center gap-3 text-center">
+        <BrandMark size="lg" showWordmark showTagline stacked href={null} />
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">
+            Create account
+          </h1>
+          <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
+            Join the MABXCHANGE demo
+          </p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--mx-text)]">
-          Create account
-        </h1>
-        <p className="mt-1.5 text-sm text-[var(--mx-text-muted)]">
-          Join the MABXCHANGE demo
-        </p>
       </div>
 
       <DemoBanner compact />
@@ -175,11 +177,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--mx-text-muted)]">
-        Loading…
-      </div>
-    }>
+    <Suspense fallback={<BrandLoader fullScreen label="Loading MABXCHANGE…" />}>
       <SignUpForm />
     </Suspense>
   );
