@@ -1,21 +1,35 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowLeftRight, Repeat2 } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
+import { isSupportedCoinId } from "@/lib/coingecko";
 import {
-  CHART_RANGES,
-  type ChartRange,
-  isSupportedCoinId,
-} from "@/lib/coingecko";
+  CANDLE_INTERVALS,
+  type CandleInterval,
+  type OhlcCandle,
+} from "@/lib/ohlc";
 import { formatChangePct, formatMoneyNative } from "@/lib/currency";
 import { CurrencyToggle } from "@/components/currency-toggle";
 import { useCurrency } from "@/components/currency-provider";
 import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel } from "@/components/ui";
-import { PriceChart, type ChartPoint } from "@/components/price-chart";
+
+const CandlestickChart = dynamic(
+  () =>
+    import("@/components/candlestick-chart").then((m) => m.CandlestickChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[320px] animate-pulse items-center justify-center rounded-xl bg-[var(--mx-surface-2)] text-sm text-[var(--mx-text-muted)]">
+        Loading chart…
+      </div>
+    ),
+  }
+);
 
 type CoinSnap = {
   id: string;
@@ -33,18 +47,33 @@ type CoinSnap = {
   lastUpdated: string | null;
 };
 
+const INTERVAL_LABELS: Record<CandleInterval, string> = {
+  "1m": "1m",
+  "5m": "5m",
+  "15m": "15m",
+  "1h": "1h",
+  "4h": "4h",
+  "1d": "1D",
+  "1w": "1W",
+};
+
 export default function MarketCoinPage() {
   const params = useParams();
   const coinId = String(params?.coinId ?? "").toLowerCase();
   const supported = isSupportedCoinId(coinId);
   const meta = SUPPORTED_ASSETS.find((a) => a.coingeckoId === coinId);
+  const hasOhlc = Boolean(meta?.binanceSymbol);
 
   const { currency } = useCurrency();
   const vs = currency === "NGN" ? "ngn" : "usd";
 
-  const [range, setRange] = useState<ChartRange>("24h");
+  const [interval, setInterval] = useState<CandleInterval>("1h");
+  const [mode, setMode] = useState<"candle" | "line">("candle");
+  const [showMa, setShowMa] = useState(true);
+  const [showEma, setShowEma] = useState(false);
+
   const [coin, setCoin] = useState<CoinSnap | null>(null);
-  const [points, setPoints] = useState<ChartPoint[]>([]);
+  const [candles, setCandles] = useState<OhlcCandle[]>([]);
   const [coinLoading, setCoinLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   const [coinError, setCoinError] = useState<string | null>(null);
@@ -59,7 +88,8 @@ export default function MarketCoinPage() {
     fetch(`/api/market/coin?id=${encodeURIComponent(coinId)}&vs=${vs}`)
       .then(async (res) => {
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.message || body?.error || `HTTP ${res.status}`);
+        if (!res.ok)
+          throw new Error(body?.message || body?.error || `HTTP ${res.status}`);
         return body;
       })
       .then((data) => {
@@ -69,43 +99,56 @@ export default function MarketCoinPage() {
       })
       .catch((err: unknown) => {
         setCoin(null);
-        setCoinError(err instanceof Error ? err.message : "Failed to load coin");
+        setCoinError(
+          err instanceof Error ? err.message : "Failed to load coin"
+        );
         setCoinLoading(false);
       });
   }, [coinId, vs, supported]);
 
-  const loadChart = useCallback(() => {
-    if (!supported) return;
+  const loadOhlc = useCallback(() => {
+    if (!supported || !hasOhlc) {
+      setChartLoading(false);
+      setChartError(
+        hasOhlc ? null : "Candlestick OHLC is not available for this asset"
+      );
+      setCandles([]);
+      return;
+    }
     setChartLoading(true);
     setChartError(null);
     fetch(
-      `/api/market/chart?id=${encodeURIComponent(coinId)}&vs=${vs}&range=${range}`
+      `/api/market/ohlc?id=${encodeURIComponent(coinId)}&interval=${interval}&vs=${vs}`
     )
       .then(async (res) => {
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(body?.message || body?.error || `HTTP ${res.status}`);
+        if (!res.ok)
+          throw new Error(body?.message || body?.error || `HTTP ${res.status}`);
         return body;
       })
       .then((data) => {
-        setPoints(Array.isArray(data.points) ? data.points : []);
-        setChartNote(data.note ?? null);
+        setCandles(Array.isArray(data.candles) ? data.candles : []);
+        const notes = [data.note, data.fxNote].filter(Boolean).join(" · ");
+        setChartNote(notes || null);
         setFetchedAt(data.fetchedAt ?? null);
         setChartLoading(false);
       })
       .catch((err: unknown) => {
-        setPoints([]);
-        setChartError(err instanceof Error ? err.message : "Failed to load chart");
+        setCandles([]);
+        setChartError(
+          err instanceof Error ? err.message : "Failed to load OHLC"
+        );
         setChartLoading(false);
       });
-  }, [coinId, vs, range, supported]);
+  }, [coinId, interval, vs, supported, hasOhlc]);
 
   useEffect(() => {
     loadCoin();
   }, [loadCoin]);
 
   useEffect(() => {
-    loadChart();
-  }, [loadChart]);
+    loadOhlc();
+  }, [loadOhlc]);
 
   if (!supported || !meta) {
     return (
@@ -147,7 +190,6 @@ export default function MarketCoinPage() {
 
       <DemoBanner compact />
 
-      {/* Header */}
       <div className="mx-card flex items-center gap-3 p-4 sm:p-5">
         {coin?.image ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -200,41 +242,91 @@ export default function MarketCoinPage() {
         </div>
       </div>
 
-      {/* Chart */}
       <div className="mx-card space-y-3 p-4 sm:p-5">
-        <div className="flex flex-wrap gap-1.5">
-          {CHART_RANGES.map((r) => (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap gap-1.5">
+            {CANDLE_INTERVALS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setInterval(r)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                  interval === r
+                    ? "bg-[var(--mx-primary)] text-white"
+                    : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)] hover:bg-[var(--mx-border)]"
+                }`}
+              >
+                {INTERVAL_LABELS[r]}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
             <button
-              key={r}
               type="button"
-              onClick={() => setRange(r)}
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase transition ${
-                range === r
+              onClick={() => setMode("candle")}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                mode === "candle"
                   ? "bg-[var(--mx-primary)] text-white"
-                  : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)] hover:bg-[var(--mx-border)]"
+                  : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)]"
               }`}
             >
-              {r}
+              Candles
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setMode("line")}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                mode === "line"
+                  ? "bg-[var(--mx-primary)] text-white"
+                  : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)]"
+              }`}
+            >
+              Line
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMa((v) => !v)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                showMa
+                  ? "bg-[var(--mx-warning-soft)] text-[var(--mx-warning)]"
+                  : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)]"
+              }`}
+            >
+              MA20
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowEma((v) => !v)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                showEma
+                  ? "bg-[rgba(139,92,246,0.2)] text-[#a78bfa]"
+                  : "bg-[var(--mx-surface-2)] text-[var(--mx-text-muted)]"
+              }`}
+            >
+              EMA20
+            </button>
+          </div>
         </div>
-        <PriceChart
-          points={points}
+
+        <CandlestickChart
+          candles={candles}
           currency={currency}
-          range={range}
+          interval={interval}
           loading={chartLoading}
           error={chartError}
           note={chartNote}
-          color={meta.color}
+          showMa={showMa}
+          showEma={showEma}
+          mode={mode}
         />
+
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
           {fetchedAt
-            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · CoinGecko Demo (may be delayed)`
-            : "CoinGecko Demo · Not real-time guaranteed"}
+            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · Binance public OHLC`
+            : "Market data · Not investment advice"}
         </p>
       </div>
 
-      {/* Stats */}
       <div className="mx-card divide-y divide-[var(--mx-border)] overflow-hidden">
         {[
           {
@@ -280,7 +372,6 @@ export default function MarketCoinPage() {
         ))}
       </div>
 
-      {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
         <Link
           href={`/trade?symbol=${meta.symbol}`}

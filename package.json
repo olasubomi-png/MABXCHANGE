@@ -16,7 +16,8 @@
     "next": "^16.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "lightweight-charts": "^4.2.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",
