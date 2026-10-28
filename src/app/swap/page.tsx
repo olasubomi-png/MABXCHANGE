@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
 import { formatMoneyNative } from "@/lib/currency";
@@ -10,7 +10,7 @@ import { DemoLabel, PageHeader } from "@/components/ui";
 import { useCurrency } from "@/components/currency-provider";
 import { useMarketCoins } from "@/hooks/use-market-coins";
 
-export default function SwapPage() {
+function SwapPageInner() {
   const { currency } = useCurrency();
   const { coins, loading, error } = useMarketCoins(currency);
   const cryptoAssets = SUPPORTED_ASSETS.filter(
@@ -197,5 +197,20 @@ export default function SwapPage() {
       </form>
       <DemoLabel />
     </div>
+  );
+}
+
+
+export default function SwapPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--mx-text-muted)]">
+          Loading…
+        </div>
+      }
+    >
+      <SwapPageInner />
+    </Suspense>
   );
 }

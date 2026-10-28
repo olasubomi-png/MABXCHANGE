@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
 import { formatMoneyNative } from "@/lib/currency";
 import { DemoBanner } from "@/components/demo-banner";
@@ -9,7 +9,7 @@ import { DemoLabel, PageHeader } from "@/components/ui";
 import { useCurrency } from "@/components/currency-provider";
 import { useMarketCoins } from "@/hooks/use-market-coins";
 
-export default function TradePage() {
+function TradePageInner() {
   const { currency } = useCurrency();
   const { coins, loading, error } = useMarketCoins(currency);
   const searchParams = useSearchParams();
@@ -131,5 +131,20 @@ export default function TradePage() {
       </form>
       <DemoLabel />
     </div>
+  );
+}
+
+
+export default function TradePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--mx-text-muted)]">
+          Loading…
+        </div>
+      }
+    >
+      <TradePageInner />
+    </Suspense>
   );
 }
