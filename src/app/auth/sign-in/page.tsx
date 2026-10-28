@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { Loader2, Lock, Mail } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { DemoBanner } from "@/components/demo-banner";
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || searchParams.get("redirect") || "/";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +34,9 @@ export default function SignInPage() {
         return;
       }
 
-      router.push("/");
+      // Prefer the originally requested page, fall back to dashboard
+      const target = callbackUrl.startsWith("/") ? callbackUrl : "/";
+      router.push(target);
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -136,5 +141,17 @@ export default function SignInPage() {
         Demo environment · No real funds or live trading
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-[var(--mx-text-muted)]">
+        Loading…
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

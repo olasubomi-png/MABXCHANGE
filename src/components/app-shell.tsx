@@ -14,6 +14,7 @@ const navItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isAuthRoute = pathname.startsWith("/auth");
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--mx-bg)]">
@@ -36,43 +37,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 pb-[calc(var(--nav-height)+var(--safe-bottom)+1rem)] pt-5 sm:max-w-2xl sm:px-6">
+      <main
+        className={`mx-auto w-full max-w-lg flex-1 px-4 pt-5 sm:max-w-2xl sm:px-6 ${
+          isAuthRoute
+            ? "pb-8"
+            : "pb-[calc(var(--nav-height)+var(--safe-bottom)+1rem)]"
+        }`}
+      >
         {children}
       </main>
 
-      {/* Mobile bottom navigation */}
-      <nav
-        className="mx-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mx-border)] bg-white/95 backdrop-blur-md"
-        aria-label="Main"
-      >
-        <div className="mx-auto flex h-[var(--nav-height)] max-w-lg items-stretch sm:max-w-2xl">
-          {navItems.map((item) => {
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${
-                  active
-                    ? "text-[var(--mx-primary)]"
-                    : "text-[var(--mx-text-soft)] hover:text-[var(--mx-text-muted)]"
-                }`}
-              >
-                <Icon
-                  size={22}
-                  strokeWidth={active ? 2.5 : 2}
-                  absoluteStrokeWidth={false}
-                />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Mobile bottom navigation — hidden on auth screens */}
+      {!isAuthRoute && (
+        <nav
+          className="mx-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mx-border)] bg-white/95 backdrop-blur-md"
+          aria-label="Main"
+        >
+          <div className="mx-auto flex h-[var(--nav-height)] max-w-lg items-stretch sm:max-w-2xl">
+            {navItems.map((item) => {
+              const active =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition ${
+                    active
+                      ? "text-[var(--mx-primary)]"
+                      : "text-[var(--mx-text-soft)] hover:text-[var(--mx-text-muted)]"
+                  }`}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={active ? 2.5 : 2}
+                    absoluteStrokeWidth={false}
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
