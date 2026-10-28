@@ -17,6 +17,7 @@ import { CurrencyToggle } from "@/components/currency-toggle";
 import { useCurrency } from "@/components/currency-provider";
 import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel } from "@/components/ui";
+import { useLiveMarket } from "@/components/live-market-provider";
 
 const CandlestickChart = dynamic(
   () =>
@@ -66,6 +67,8 @@ export default function MarketCoinPage() {
 
   const { currency } = useCurrency();
   const vs = currency === "NGN" ? "ngn" : "usd";
+  const live = useLiveMarket();
+  const liveTicker = live.getTicker(coinId);
 
   const [interval, setInterval] = useState<CandleInterval>("1h");
   const [mode, setMode] = useState<"candle" | "line">("candle");
@@ -150,6 +153,8 @@ export default function MarketCoinPage() {
     loadOhlc();
   }, [loadOhlc]);
 
+
+
   if (!supported || !meta) {
     return (
       <div className="space-y-5">
@@ -222,9 +227,11 @@ export default function MarketCoinPage() {
           ) : (
             <div className="mt-1 flex flex-wrap items-baseline gap-2">
               <span className="text-2xl font-bold text-[var(--mx-text)]">
-                {coin?.currentPrice != null
-                  ? formatMoneyNative(coin.currentPrice, currency)
-                  : "—"}
+                {currency === "USD" && liveTicker
+                  ? formatMoneyNative(liveTicker.priceUsd, "USD")
+                  : coin?.currentPrice != null
+                    ? formatMoneyNative(coin.currentPrice, currency)
+                    : "—"}
               </span>
               <span
                 className={`text-sm font-semibold ${
@@ -318,12 +325,16 @@ export default function MarketCoinPage() {
           showMa={showMa}
           showEma={showEma}
           mode={mode}
+          livePrice={currency === "USD" ? liveTicker?.priceUsd ?? null : null}
+          liveTimeMs={liveTicker?.updatedAt ?? null}
         />
 
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
-          {fetchedAt
-            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · Kraken / CoinGecko OHLC`
-            : "Market data · Not investment advice"}
+          {live.status === "live"
+            ? `Live · ${live.providerLabel}`
+            : fetchedAt
+              ? `Updated ${new Date(fetchedAt).toLocaleTimeString()} · ${live.status} · Kraken/CoinGecko`
+              : "Market data · Not investment advice"}
         </p>
       </div>
 

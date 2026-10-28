@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { DemoBanner } from "./demo-banner";
+import { LiveStatusBadge } from "./live-market-provider";
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },

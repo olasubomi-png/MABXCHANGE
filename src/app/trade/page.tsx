@@ -8,10 +8,12 @@ import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel, PageHeader } from "@/components/ui";
 import { useCurrency } from "@/components/currency-provider";
 import { useMarketCoins } from "@/hooks/use-market-coins";
+import { useLiveMarket } from "@/components/live-market-provider";
 
 function TradePageInner() {
   const { currency } = useCurrency();
   const { coins, loading, error } = useMarketCoins(currency);
+  const live = useLiveMarket();
   const searchParams = useSearchParams();
   const initialSymbol = (searchParams.get("symbol") || "BTC").toUpperCase();
   const [side, setSide] = useState<"buy" | "sell">("buy");
@@ -35,12 +37,17 @@ function TradePageInner() {
     );
   }
 
+  const livePx = live.getPriceUsd(
+    (SUPPORTED_ASSETS.find((a) => a.symbol === symbol)?.coingeckoId) || ""
+  );
   const priceLabel =
-    market?.currentPrice != null
-      ? formatMoneyNative(market.currentPrice, currency)
-      : loading
-        ? "Loading…"
-        : "—";
+    currency === "USD" && livePx != null
+      ? formatMoneyNative(livePx, "USD")
+      : market?.currentPrice != null
+        ? formatMoneyNative(market.currentPrice, currency)
+        : loading
+          ? "Loading…"
+          : "—";
 
   return (
     <div className="space-y-5">

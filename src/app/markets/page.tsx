@@ -9,6 +9,7 @@ import { DemoLabel, PageHeader } from "@/components/ui";
 import { CurrencyToggle } from "@/components/currency-toggle";
 import { useCurrency } from "@/components/currency-provider";
 import { useMarketCoins } from "@/hooks/use-market-coins";
+import { useLiveMarket } from "@/components/live-market-provider";
 
 const tabs = ["All", "Top Gainers", "Top Losers"] as const;
 
@@ -18,6 +19,7 @@ export default function MarketsPage() {
   const { currency } = useCurrency();
   const { coins, loading, error, fetchedAt, delayed, refresh } =
     useMarketCoins(currency);
+  const live = useLiveMarket();
 
   const list = useMemo(() => {
     let rows = coins.filter((c) => c.symbol !== "USDT" && c.symbol !== "USDC");
@@ -119,8 +121,10 @@ export default function MarketsPage() {
         ) : (
           <ul className="divide-y divide-[var(--mx-border)]">
             {list.map((a, i) => {
+              const liveT = live.getTicker(a.id);
+              const changePct = liveT?.change24hPct ?? a.priceChange24hPct;
               const positive =
-                a.priceChange24hPct !== null && a.priceChange24hPct >= 0;
+                changePct !== null && changePct >= 0;
               return (
                 <li key={a.symbol}>
                   <Link
@@ -147,20 +151,26 @@ export default function MarketsPage() {
                     </div>
                   </div>
                   <p className="text-right text-sm font-semibold text-[var(--mx-text)]">
-                    {a.currentPrice !== null
-                      ? formatMoneyNative(a.currentPrice, currency)
-                      : "—"}
+                    {(() => {
+                      const livePx = live.getPriceUsd(a.id);
+                      if (currency === "USD" && livePx != null) {
+                        return formatMoneyNative(livePx, "USD");
+                      }
+                      return a.currentPrice !== null
+                        ? formatMoneyNative(a.currentPrice, currency)
+                        : "—";
+                    })()}
                   </p>
                   <p
                     className={`w-16 text-right text-xs font-semibold ${
-                      a.priceChange24hPct === null
+                      changePct === null
                         ? "text-[var(--mx-text-soft)]"
                         : positive
                           ? "text-[var(--mx-success)]"
                           : "text-[var(--mx-danger)]"
                     }`}
                   >
-                    {formatChangePct(a.priceChange24hPct)}
+                    {formatChangePct(changePct)}
                   </p>
                   </Link>
                 </li>

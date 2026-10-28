@@ -9,6 +9,7 @@ import type {
 } from "lightweight-charts";
 import type { CandleInterval, OhlcCandle } from "@/lib/ohlc";
 import { computeEMA, computeSMA } from "@/lib/ohlc";
+import { applyTickToCandles } from "@/lib/live-market";
 import { formatMoneyNative, type Currency } from "@/lib/currency";
 
 type Props = {
@@ -21,6 +22,9 @@ type Props = {
   showMa?: boolean;
   showEma?: boolean;
   mode?: "candle" | "line";
+  /** Live last price (USD) — updates forming candle without remounting */
+  livePrice?: number | null;
+  liveTimeMs?: number | null;
 };
 
 type CandlestickDataPoint = {
@@ -41,9 +45,14 @@ export function CandlestickChart({
   showMa = true,
   showEma = false,
   mode = "candle",
+  livePrice = null,
+  liveTimeMs = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const candlesRef = useRef(candles);
+  candlesRef.current = candles;
   const [hover, setHover] = useState<OhlcCandle | null>(null);
 
   useEffect(() => {
@@ -93,6 +102,7 @@ export function CandlestickChart({
       if (disposed) {
         chart.remove();
         chartRef.current = null;
+      candleSeriesRef.current = null;
         return;
       }
 
@@ -120,6 +130,7 @@ export function CandlestickChart({
           }))
         );
         primarySeries = series;
+        candleSeriesRef.current = series;
       } else {
         const series = chart.addAreaSeries({
           lineColor: "#2962FF",
@@ -265,8 +276,33 @@ export function CandlestickChart({
         chart.remove();
       }
       chartRef.current = null;
+      candleSeriesRef.current = null;
     };
   }, [candles, currency, interval, loading, error, showMa, showEma, mode]);
+
+
+  // Live tick → update last candle in-place when possible
+  useEffect(() => {
+    if (livePrice == null || livePrice <= 0 || mode !== "candle") return;
+    const series = candleSeriesRef.current;
+    const list = candlesRef.current;
+    if (!series || list.length < 1) return;
+    const tSec = Math.floor((liveTimeMs ?? Date.now()) / 1000);
+    const next = applyTickToCandles(list, livePrice, tSec, interval, 0);
+    const last = next[next.length - 1];
+    try {
+      series.update({
+        time: last.time as UTCTimestamp,
+        open: last.open,
+        high: last.high,
+        low: last.low,
+        close: last.close,
+      });
+      candlesRef.current = next;
+    } catch {
+      /* ignore out-of-order */
+    }
+  }, [livePrice, liveTimeMs, interval, mode]);
 
   if (loading) {
     return (
