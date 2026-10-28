@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { ChevronRight, Lock, Shield, User } from "lucide-react";
 import { auth } from "@/lib/auth/server";
-import { ensureAppUser, getCustomerAccountForUser } from "@/lib/db";
+import {
+  formatAccountDate,
+  getInitials,
+  provisionAuthenticatedUser,
+} from "@/lib/db";
 import { DemoBanner } from "@/components/demo-banner";
 import { SignOutButton } from "@/components/sign-out-button";
 
 export const dynamic = "force-dynamic";
 
 const settingsRows = [
-  { label: "Account details", hint: "Name, email", icon: User, href: "#" },
-  { label: "Security", hint: "Password, sessions", icon: Shield, href: "#" },
-  { label: "Privacy & data", hint: "Preferences and export", icon: Lock, href: "#" },
+  { label: "Account details", hint: "Name, email", icon: User },
+  { label: "Security", hint: "Password, sessions", icon: Shield },
+  { label: "Privacy & data", hint: "Preferences and export", icon: Lock },
 ] as const;
 
 export default async function ProfilePage() {
@@ -20,7 +24,9 @@ export default async function ProfilePage() {
     return (
       <div className="space-y-5">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">Profile</h1>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">
+            Profile
+          </h1>
           <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
             Sign in to view your account
           </p>
@@ -49,33 +55,32 @@ export default async function ProfilePage() {
     );
   }
 
-  let appUser = null;
-  let account = null;
-  try {
-    appUser = await ensureAppUser({
-      authUserId: session.user.id,
-      email: session.user.email ?? "",
-      displayName: session.user.name,
-    });
-    if (appUser?.id) {
-      account = await getCustomerAccountForUser(String(appUser.id));
-    }
-  } catch {
-    // DB may be unreachable; fall back gracefully
-  }
+  const { appUser, account, dbError } = await provisionAuthenticatedUser({
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
+  });
 
   const displayName =
-    appUser?.display_name ||
+    appUser.display_name ||
     session.user.name ||
     session.user.email?.split("@")[0] ||
     "User";
-  const email = appUser?.email || session.user.email || "—";
-  const initial = displayName.charAt(0).toUpperCase();
+  const email = appUser.email || session.user.email || "—";
+  const initials = getInitials(displayName);
+  const memberSince = formatAccountDate(appUser.created_at);
+  const sandboxStatus = account?.status
+    ? String(account.status)
+    : dbError
+      ? "unavailable"
+      : "sandbox · pending setup";
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">Profile</h1>
+        <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">
+          Profile
+        </h1>
         <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
           Account settings · Demo only
         </p>
@@ -83,25 +88,57 @@ export default async function ProfilePage() {
 
       <DemoBanner compact />
 
+      {dbError && (
+        <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
+          We could not load full account details from the database. You are
+          still signed in with Neon Auth. Try again shortly.
+        </div>
+      )}
+
+      {/* Identity card */}
       <div className="mx-card flex items-center gap-4 p-4 sm:p-5">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mx-primary-soft)] text-lg font-bold text-[var(--mx-primary)]">
-          {initial}
+          {initials}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[var(--mx-text)]">{displayName}</p>
           <p className="truncate text-sm text-[var(--mx-text-muted)]">{email}</p>
-          {account ? (
-            <p className="mt-1 text-xs text-[var(--mx-text-soft)]">
-              Account status: {String(account.status ?? "sandbox")}
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-[var(--mx-text-soft)]">
-              Sandbox account · setup incomplete
-            </p>
-          )}
         </div>
       </div>
 
+      {/* Account meta */}
+      <div className="mx-card divide-y divide-[var(--mx-border)] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-sm text-[var(--mx-text-muted)]">Member since</span>
+          <span className="text-sm font-medium text-[var(--mx-text)]">
+            {memberSince}
+          </span>
+        </div>
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-sm text-[var(--mx-text-muted)]">Account status</span>
+          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold capitalize text-amber-800 ring-1 ring-amber-200">
+            {sandboxStatus}
+          </span>
+        </div>
+        {account?.currency && (
+          <div className="flex items-center justify-between px-4 py-3.5">
+            <span className="text-sm text-[var(--mx-text-muted)]">
+              Primary currency
+            </span>
+            <span className="text-sm font-medium text-[var(--mx-text)]">
+              {String(account.currency)}
+            </span>
+          </div>
+        )}
+        <div className="flex items-center justify-between px-4 py-3.5">
+          <span className="text-sm text-[var(--mx-text-muted)]">Auth provider</span>
+          <span className="text-sm font-medium text-[var(--mx-text)]">
+            Neon Managed Auth
+          </span>
+        </div>
+      </div>
+
+      {/* Settings list (placeholders) */}
       <div className="mx-card overflow-hidden">
         {settingsRows.map((row, i) => {
           const Icon = row.icon;
@@ -109,14 +146,18 @@ export default async function ProfilePage() {
             <div
               key={row.label}
               className={`flex items-center gap-3 px-4 py-3.5 ${
-                i < settingsRows.length - 1 ? "border-b border-[var(--mx-border)]" : ""
+                i < settingsRows.length - 1
+                  ? "border-b border-[var(--mx-border)]"
+                  : ""
               }`}
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--mx-bg-muted)]">
                 <Icon size={16} className="text-[var(--mx-text-muted)]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[var(--mx-text)]">{row.label}</p>
+                <p className="text-sm font-medium text-[var(--mx-text)]">
+                  {row.label}
+                </p>
                 <p className="text-xs text-[var(--mx-text-soft)]">{row.hint}</p>
               </div>
               <ChevronRight size={16} className="text-[var(--mx-text-soft)]" />
@@ -130,7 +171,8 @@ export default async function ProfilePage() {
       </div>
 
       <p className="text-center text-xs text-[var(--mx-text-soft)]">
-        Authentication is provided by Neon Managed Auth. Financial activity remains sandbox-only.
+        Authentication is provided by Neon Managed Auth. Financial activity
+        remains sandbox-only.
       </p>
     </div>
   );

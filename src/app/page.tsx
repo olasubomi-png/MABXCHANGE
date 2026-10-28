@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
+import {
+  getInitials,
+  provisionAuthenticatedUser,
+} from "@/lib/db";
 import { Greeting } from "@/components/greeting";
 import { BalanceCard } from "@/components/balance-card";
 import { ActionGrid } from "@/components/action-grid";
@@ -14,14 +18,35 @@ export default async function HomePage() {
     redirect("/auth/sign-in");
   }
 
+  const { appUser, dbError } = await provisionAuthenticatedUser({
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
+  });
+
+  const displayName =
+    appUser.display_name ||
+    session.user.name ||
+    session.user.email?.split("@")[0] ||
+    null;
+
+  const initials = getInitials(displayName);
+
   return (
     <div className="space-y-5">
-      <Greeting />
+      <Greeting displayName={displayName} initials={initials} />
+
+      {dbError && (
+        <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
+          Account data is temporarily unavailable. You are still signed in.
+        </div>
+      )}
+
       <BalanceCard />
       <ActionGrid />
       <HoldingsList />
       <p className="pb-2 text-center text-xs text-[var(--mx-text-soft)]">
-        MABXCHANGE demo · Not a live trading platform
+        MABXCHANGE demo · Sandbox only · Not a live trading platform
       </p>
     </div>
   );
