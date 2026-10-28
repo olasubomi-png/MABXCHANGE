@@ -1,51 +1,65 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import { SUPPORTED_ASSETS } from "@/lib/assets";
-import { formatMoney } from "@/lib/currency";
+import { RefreshCw, Search } from "lucide-react";
+import { formatChangePct, formatMoneyNative } from "@/lib/currency";
 import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel, PageHeader } from "@/components/ui";
 import { CurrencyToggle } from "@/components/currency-toggle";
 import { useCurrency } from "@/components/currency-provider";
+import { useMarketCoins } from "@/hooks/use-market-coins";
 
-const tabs = ["All", "Favorites", "Top Gainers", "Top Losers"] as const;
-
-function parseSampleUsd(price: string): number {
-  const n = Number(price.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
+const tabs = ["All", "Top Gainers", "Top Losers"] as const;
 
 export default function MarketsPage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<(typeof tabs)[number]>("All");
   const { currency } = useCurrency();
+  const { coins, loading, error, fetchedAt, delayed, refresh } =
+    useMarketCoins(currency);
 
   const list = useMemo(() => {
-    let rows = [...SUPPORTED_ASSETS].filter(
-      (a) => a.symbol !== "USDT" && a.symbol !== "USDC"
-    );
-    if (tab === "Top Gainers") rows = rows.filter((a) => a.samplePositive);
-    if (tab === "Top Losers") rows = rows.filter((a) => !a.samplePositive);
+    let rows = coins.filter((c) => c.symbol !== "USDT" && c.symbol !== "USDC");
+    if (tab === "Top Gainers") {
+      rows = rows.filter(
+        (c) => c.priceChange24hPct !== null && c.priceChange24hPct > 0
+      );
+    }
+    if (tab === "Top Losers") {
+      rows = rows.filter(
+        (c) => c.priceChange24hPct !== null && c.priceChange24hPct < 0
+      );
+    }
     if (q.trim()) {
       const s = q.toLowerCase();
       rows = rows.filter(
-        (a) =>
-          a.symbol.toLowerCase().includes(s) ||
-          a.name.toLowerCase().includes(s)
+        (c) =>
+          c.symbol.toLowerCase().includes(s) ||
+          c.name.toLowerCase().includes(s)
       );
     }
     return rows;
-  }, [q, tab]);
+  }, [coins, q, tab]);
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
         <PageHeader
           title="Markets"
-          subtitle="Sample market figures · Demo only"
+          subtitle="CoinGecko Demo · Prices may be delayed"
         />
-        <CurrencyToggle variant="default" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={loading}
+            className="rounded-lg border border-[var(--mx-border)] bg-[var(--mx-surface-2)] p-2 text-[var(--mx-text-muted)] hover:text-[var(--mx-text)] disabled:opacity-50"
+            aria-label="Refresh prices"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+          <CurrencyToggle variant="default" />
+        </div>
       </div>
       <DemoBanner compact />
 
@@ -79,63 +93,88 @@ export default function MarketsPage() {
         ))}
       </div>
 
+      {error && (
+        <div className="rounded-xl mx-banner-warning px-3.5 py-2.5 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="mx-card overflow-hidden">
         <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-[var(--mx-border)] px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--mx-text-soft)]">
           <span>Coin</span>
           <span className="text-right">Price ({currency})</span>
           <span className="w-16 text-right">24h</span>
         </div>
-        <ul className="divide-y divide-[var(--mx-border)]">
-          {list.map((a, i) => {
-            const usd = parseSampleUsd(a.samplePrice);
-            const priceLabel = formatMoney(usd, currency);
-            return (
-              <li
-                key={a.symbol}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="w-4 text-xs text-[var(--mx-text-soft)]">
-                    {i + 1}
-                  </span>
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                    style={{ backgroundColor: a.color }}
-                  >
-                    {a.mark}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--mx-text)]">
-                      {a.name}
-                    </p>
-                    <p className="text-xs text-[var(--mx-text-muted)]">
-                      {a.symbol}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-right text-sm font-semibold text-[var(--mx-text)]">
-                  {priceLabel}
-                </p>
-                <p
-                  className={`w-16 text-right text-xs font-semibold ${
-                    a.samplePositive
-                      ? "text-[var(--mx-success)]"
-                      : "text-[var(--mx-danger)]"
-                  }`}
+
+        {loading && list.length === 0 ? (
+          <div className="space-y-3 px-4 py-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-12 animate-pulse rounded-lg bg-[var(--mx-surface-2)]"
+              />
+            ))}
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--mx-border)]">
+            {list.map((a, i) => {
+              const positive =
+                a.priceChange24hPct !== null && a.priceChange24hPct >= 0;
+              return (
+                <li
+                  key={a.symbol}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5"
                 >
-                  {a.sampleChange}
-                </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="w-4 text-xs text-[var(--mx-text-soft)]">
+                      {i + 1}
+                    </span>
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: a.color }}
+                    >
+                      {a.mark}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[var(--mx-text)]">
+                        {a.name}
+                      </p>
+                      <p className="text-xs text-[var(--mx-text-muted)]">
+                        {a.symbol}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-right text-sm font-semibold text-[var(--mx-text)]">
+                    {a.currentPrice !== null
+                      ? formatMoneyNative(a.currentPrice, currency)
+                      : "—"}
+                  </p>
+                  <p
+                    className={`w-16 text-right text-xs font-semibold ${
+                      a.priceChange24hPct === null
+                        ? "text-[var(--mx-text-soft)]"
+                        : positive
+                          ? "text-[var(--mx-success)]"
+                          : "text-[var(--mx-danger)]"
+                    }`}
+                  >
+                    {formatChangePct(a.priceChange24hPct)}
+                  </p>
+                </li>
+              );
+            })}
+            {!loading && list.length === 0 && !error && (
+              <li className="px-4 py-8 text-center text-sm text-[var(--mx-text-muted)]">
+                No coins match your search
               </li>
-            );
-          })}
-          {list.length === 0 && (
-            <li className="px-4 py-8 text-center text-sm text-[var(--mx-text-muted)]">
-              No coins match your search
-            </li>
-          )}
-        </ul>
+            )}
+          </ul>
+        )}
+
         <div className="border-t border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-4 py-2.5 text-center text-[11px] text-[var(--mx-text-soft)]">
-          Sample prices · NGN uses illustrative sample FX · Not live market data
+          {fetchedAt
+            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()}${delayed ? " · Demo plan (may be delayed)" : ""}`
+            : "CoinGecko Demo · Not a trading venue"}
         </div>
       </div>
       <DemoLabel />

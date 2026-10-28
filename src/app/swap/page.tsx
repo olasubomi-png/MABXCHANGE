@@ -3,19 +3,15 @@
 import { useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
-import { SAMPLE_USD_NGN } from "@/lib/currency";
+import { formatMoneyNative } from "@/lib/currency";
 import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel, PageHeader } from "@/components/ui";
 import { useCurrency } from "@/components/currency-provider";
-
-/** Parse illustrative sample USD price strings like "$67,432.12" */
-function parseSampleUsd(price: string): number {
-  const n = Number(price.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
+import { useMarketCoins } from "@/hooks/use-market-coins";
 
 export default function SwapPage() {
-  const { format, currency } = useCurrency();
+  const { currency } = useCurrency();
+  const { coins, loading, error } = useMarketCoins(currency);
   const cryptoAssets = SUPPORTED_ASSETS.filter(
     (a) => a.symbol !== "USDT" && a.symbol !== "USDC"
   );
@@ -26,52 +22,64 @@ export default function SwapPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const fromAsset = cryptoAssets.find((a) => a.symbol === fromSymbol);
+  const market = useMemo(
+    () => coins.find((c) => c.symbol === fromSymbol),
+    [coins, fromSymbol]
+  );
+
   const qty = Number(amount);
   const validQty = Number.isFinite(qty) && qty > 0;
 
   const estimate = useMemo(() => {
-    if (!fromAsset || !validQty) return null;
-    const usdPerUnit = parseSampleUsd(fromAsset.samplePrice);
-    const usdValue = qty * usdPerUnit;
+    if (!validQty || market?.currentPrice == null) return null;
+    const value = qty * market.currentPrice;
+    // Price is already in display currency from CoinGecko (usd or ngn)
     if (toTarget === "NGN") {
+      if (currency === "NGN") {
+        return {
+          label: "Estimated NGN (CoinGecko Demo)",
+          value: formatMoneyNative(value, "NGN"),
+          detail: "Quote uses CoinGecko ngn price · Not executed",
+        };
+      }
+      // Display currency is USD — we cannot invent NGN without ngn feed
       return {
-        label: "Estimated NGN (sample)",
-        value: formatMoneyNgn(usdValue),
-        detail: `Sample rate ~ ₦${SAMPLE_USD_NGN.toLocaleString()}/USD · Not live FX`,
+        label: "Estimated value (USD)",
+        value: formatMoneyNative(value, "USD"),
+        detail:
+          "Switch display currency to NGN to see CoinGecko NGN quotes. Not executed.",
       };
     }
-    // stablecoins ~ $1
+    // stablecoins approx 1:1 with USD value of the crypto leg
+    const usdApprox =
+      currency === "USD" ? value : null; // if NGN display, value is in NGN — avoid false USDT qty
+    if (usdApprox === null) {
+      return {
+        label: `Estimated ${toTarget}`,
+        value: "—",
+        detail:
+          "Switch to USD display for stablecoin estimates when price is in NGN.",
+      };
+    }
     return {
-      label: `Estimated ${toTarget} (sample)`,
-      value: `${usdValue.toFixed(2)} ${toTarget}`,
-      detail: "Sample quote · Sandbox only · Not executed",
+      label: `Estimated ${toTarget} (sample ~$1)`,
+      value: `${usdApprox.toFixed(2)} ${toTarget}`,
+      detail: "Illustrative stablecoin parity · Sandbox · Not executed",
     };
-  }, [fromAsset, validQty, qty, toTarget]);
-
-  function formatMoneyNgn(usd: number) {
-    const ngn = usd * SAMPLE_USD_NGN;
-    return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
-    }).format(ngn);
-  }
+  }, [validQty, qty, market, toTarget, currency]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNotice(null);
-
     if (!validQty) {
       setNotice("Enter a valid amount greater than zero.");
       return;
     }
-
-    // Sandbox balances are always 0 — insufficient funds
     setSubmitting(true);
     setTimeout(() => {
       setSubmitting(false);
       setNotice(
-        "Swap not executed. Sandbox balance is 0 — insufficient funds. No ledger entry was created and no real conversion occurred."
+        "Swap not executed. Sandbox balance is 0 — insufficient funds. No ledger entry was created."
       );
     }, 400);
   }
@@ -83,6 +91,12 @@ export default function SwapPage() {
         subtitle="Crypto → NGN or stables · Sandbox only"
       />
       <DemoBanner compact />
+
+      {error && (
+        <div className="rounded-xl mx-banner-warning px-3.5 py-2.5 text-sm">
+          Live price unavailable: {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="mx-card space-y-4 p-4 sm:p-5">
         <div>
@@ -115,6 +129,14 @@ export default function SwapPage() {
             placeholder="0.00"
             className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-3 py-2.5 text-sm text-[var(--mx-text)] outline-none placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)]"
           />
+          <p className="mt-1 text-[11px] text-[var(--mx-text-soft)]">
+            Market:{" "}
+            {market?.currentPrice != null
+              ? formatMoneyNative(market.currentPrice, currency)
+              : loading
+                ? "Loading…"
+                : "—"}
+          </p>
         </div>
 
         <div className="flex justify-center">
@@ -149,9 +171,6 @@ export default function SwapPage() {
             <p className="mt-1 text-[11px] text-[var(--mx-text-soft)]">
               {estimate.detail}
             </p>
-            <p className="mt-1 text-[11px] text-[var(--mx-text-soft)]">
-              Display currency preference: {currency} ({format(0)} zero-balance)
-            </p>
           </div>
         )}
 
@@ -170,7 +189,7 @@ export default function SwapPage() {
         </button>
 
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
-          Simulated quotes only · No real conversion · Sample FX not live
+          Simulated only · CoinGecko Demo prices · No real conversion
         </p>
       </form>
       <DemoLabel />

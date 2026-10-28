@@ -63,3 +63,9 @@ npm run lint
 - Neon Managed Auth (`@neondatabase/auth`)
 - Neon Serverless Postgres (`@neondatabase/serverless`)
 - lucide-react icons
+
+## Market data
+
+Set `COINGECKO_API_KEY` (CoinGecko Demo) in Vercel. The key is read only on the server via `x-cg-demo-api-key`. Never expose it as `NEXT_PUBLIC_*`.
+Prices may be delayed under the Demo plan. Trading remains sandbox-only.
+

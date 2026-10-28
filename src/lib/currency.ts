@@ -1,16 +1,13 @@
 /**
  * Shared currency preference + formatting.
- * Amounts are stored/thought of in USD units; display converts for NGN.
- *
- * SAMPLE_USD_NGN is an illustrative rate for demo UI only — not a live FX feed.
+ * Market prices should be requested from CoinGecko already in the display currency
+ * (vs_currency=usd|ngn). formatMoneyNative formats a price in that currency
+ * without applying any invented FX rate.
  */
 
 export type Currency = "USD" | "NGN";
 
 export const CURRENCIES: Currency[] = ["USD", "NGN"]; // USD first
-
-/** Illustrative sample rate for demo formatting only. Not live FX. */
-export const SAMPLE_USD_NGN = 1600;
 
 export const CURRENCY_STORAGE_KEY = "mabxchange_currency";
 
@@ -18,36 +15,55 @@ export function isCurrency(v: unknown): v is Currency {
   return v === "USD" || v === "NGN";
 }
 
-/**
- * Format a USD-denominated amount for the selected display currency.
- * @param amountUsd amount in US dollars (e.g. 12.5)
- */
-export function formatMoney(
-  amountUsd: number,
-  currency: Currency,
-  options?: { compact?: boolean }
+/** Format an amount already denominated in the given currency (from CoinGecko). */
+export function formatMoneyNative(
+  amount: number,
+  currency: Currency
 ): string {
-  const value =
-    currency === "NGN" ? amountUsd * SAMPLE_USD_NGN : amountUsd;
-
   try {
     return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
       style: "currency",
       currency,
       currencyDisplay: "symbol",
       minimumFractionDigits: 2,
-      maximumFractionDigits: options?.compact ? 2 : 2,
-    }).format(value);
+      maximumFractionDigits: amount >= 1 ? 2 : 6,
+    }).format(amount);
   } catch {
     const symbol = currency === "NGN" ? "₦" : "$";
-    return `${symbol}${value.toFixed(2)}`;
+    return `${symbol}${amount.toFixed(2)}`;
   }
 }
 
-/** Format an integer-like quantity (crypto units) without currency symbol. */
+/**
+ * Format a USD wallet/ledger amount for display.
+ * Wallet balances are conceptual USD units at $0 in sandbox.
+ * For non-zero balances we only show USD unless a verified NGN price feed
+ * is available — we do not invent an FX rate here.
+ */
+export function formatMoney(
+  amountUsd: number,
+  currency: Currency
+): string {
+  if (currency === "USD" || amountUsd === 0) {
+    // Zero is zero in any currency
+    if (amountUsd === 0) {
+      return formatMoneyNative(0, currency);
+    }
+    return formatMoneyNative(amountUsd, "USD");
+  }
+  // NGN selected but we have no verified live FX for ledger amounts
+  return formatMoneyNative(amountUsd, "USD") + " (NGN rate unavailable)";
+}
+
 export function formatQty(qty: number, digits = 4): string {
   return qty.toLocaleString(undefined, {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+export function formatChangePct(pct: number | null): string {
+  if (pct === null || Number.isNaN(pct)) return "—";
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(2)}%`;
 }
