@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type {
+  IChartApi,
+  ISeriesApi,
+  MouseEventParams,
+  UTCTimestamp,
+} from "lightweight-charts";
 import type { CandleInterval, OhlcCandle } from "@/lib/ohlc";
 import { computeEMA, computeSMA } from "@/lib/ohlc";
 import { formatMoneyNative, type Currency } from "@/lib/currency";
@@ -17,6 +23,14 @@ type Props = {
   mode?: "candle" | "line";
 };
 
+type CandlestickDataPoint = {
+  time: UTCTimestamp;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
 export function CandlestickChart({
   candles,
   currency,
@@ -29,13 +43,23 @@ export function CandlestickChart({
   mode = "candle",
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
   const [hover, setHover] = useState<OhlcCandle | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || loading || error || candles.length < 2) return;
+    if (!containerRef.current || loading || error || candles.length < 2) {
+      return;
+    }
 
     let disposed = false;
-    let chart: import("lightweight-charts").IChartApi | null = null;
+    let chart: IChartApi | null = null;
+    let onResize: (() => void) | null = null;
+    let onCrosshair: ((param: MouseEventParams) => void) | null = null;
+
+    const volumeByTime = new Map<number, number>();
+    for (const c of candles) {
+      volumeByTime.set(c.time, c.volume);
+    }
 
     (async () => {
       const lc = await import("lightweight-charts");
@@ -64,6 +88,18 @@ export function CandlestickChart({
         width: containerRef.current.clientWidth,
         height: 320,
       });
+      chartRef.current = chart;
+
+      if (disposed) {
+        chart.remove();
+        chartRef.current = null;
+        return;
+      }
+
+      let primarySeries:
+        | ISeriesApi<"Candlestick">
+        | ISeriesApi<"Area">
+        | null = null;
 
       if (mode === "candle") {
         const series = chart.addCandlestickSeries({
@@ -76,38 +112,14 @@ export function CandlestickChart({
         });
         series.setData(
           candles.map((c) => ({
-            time: c.time as import("lightweight-charts").UTCTimestamp,
+            time: c.time as UTCTimestamp,
             open: c.open,
             high: c.high,
             low: c.low,
             close: c.close,
           }))
         );
-
-        series.subscribeCrosshairMove((param) => {
-          if (!param.time || !param.seriesData) {
-            setHover(null);
-            return;
-          }
-          const raw = param.seriesData.get(series) as
-            | { open: number; high: number; low: number; close: number }
-            | undefined;
-          if (!raw) {
-            setHover(null);
-            return;
-          }
-          const t = typeof param.time === "number" ? param.time : 0;
-          const vol =
-            candles.find((c) => c.time === t)?.volume ?? 0;
-          setHover({
-            time: t,
-            open: raw.open,
-            high: raw.high,
-            low: raw.low,
-            close: raw.close,
-            volume: vol,
-          });
-        });
+        primarySeries = series;
       } else {
         const series = chart.addAreaSeries({
           lineColor: "#2962FF",
@@ -117,13 +129,13 @@ export function CandlestickChart({
         });
         series.setData(
           candles.map((c) => ({
-            time: c.time as import("lightweight-charts").UTCTimestamp,
+            time: c.time as UTCTimestamp,
             value: c.close,
           }))
         );
+        primarySeries = series;
       }
 
-      // Volume
       const volSeries = chart.addHistogramSeries({
         priceFormat: { type: "volume" },
         priceScaleId: "vol",
@@ -133,7 +145,7 @@ export function CandlestickChart({
       });
       volSeries.setData(
         candles.map((c) => ({
-          time: c.time as import("lightweight-charts").UTCTimestamp,
+          time: c.time as UTCTimestamp,
           value: c.volume,
           color:
             c.close >= c.open
@@ -153,7 +165,7 @@ export function CandlestickChart({
           });
           maSeries.setData(
             ma.map((p) => ({
-              time: p.time as import("lightweight-charts").UTCTimestamp,
+              time: p.time as UTCTimestamp,
               value: p.value,
             }))
           );
@@ -171,33 +183,88 @@ export function CandlestickChart({
           });
           emaSeries.setData(
             ema.map((p) => ({
-              time: p.time as import("lightweight-charts").UTCTimestamp,
+              time: p.time as UTCTimestamp,
               value: p.value,
             }))
           );
         }
       }
 
+      onCrosshair = (param: MouseEventParams) => {
+        if (!param.time || !primarySeries) {
+          setHover(null);
+          return;
+        }
+
+        const t =
+          typeof param.time === "number"
+            ? param.time
+            : typeof param.time === "object" &&
+                param.time !== null &&
+                "timestamp" in param.time
+              ? Number(
+                  (param.time as { timestamp?: number }).timestamp ?? 0
+                )
+              : 0;
+
+        if (mode === "candle") {
+          const raw = param.seriesData.get(primarySeries) as
+            | CandlestickDataPoint
+            | undefined;
+          if (!raw || typeof raw.open !== "number") {
+            setHover(null);
+            return;
+          }
+          setHover({
+            time: t,
+            open: raw.open,
+            high: raw.high,
+            low: raw.low,
+            close: raw.close,
+            volume: volumeByTime.get(t) ?? 0,
+          });
+        } else {
+          const raw = param.seriesData.get(primarySeries) as
+            | { value?: number }
+            | undefined;
+          if (!raw || typeof raw.value !== "number") {
+            setHover(null);
+            return;
+          }
+          setHover({
+            time: t,
+            open: raw.value,
+            high: raw.value,
+            low: raw.value,
+            close: raw.value,
+            volume: volumeByTime.get(t) ?? 0,
+          });
+        }
+      };
+
+      chart.subscribeCrosshairMove(onCrosshair);
       chart.timeScale().fitContent();
 
-      const onResize = () => {
+      onResize = () => {
         if (containerRef.current && chart) {
           chart.applyOptions({ width: containerRef.current.clientWidth });
         }
       };
       window.addEventListener("resize", onResize);
-
-      return () => {
-        window.removeEventListener("resize", onResize);
-      };
     })();
 
     return () => {
       disposed = true;
+      if (onResize) {
+        window.removeEventListener("resize", onResize);
+      }
+      if (chart && onCrosshair) {
+        chart.unsubscribeCrosshairMove(onCrosshair);
+      }
       if (chart) {
         chart.remove();
-        chart = null;
       }
+      chartRef.current = null;
     };
   }, [candles, currency, interval, loading, error, showMa, showEma, mode]);
 
@@ -228,13 +295,19 @@ export function CandlestickChart({
 
   return (
     <div className="w-full space-y-2">
-      {hover && mode === "candle" && (
+      {hover && (
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--mx-text-muted)]">
           <span>{new Date(hover.time * 1000).toLocaleString()}</span>
-          <span>O {formatMoneyNative(hover.open, currency)}</span>
-          <span>H {formatMoneyNative(hover.high, currency)}</span>
-          <span>L {formatMoneyNative(hover.low, currency)}</span>
-          <span>C {formatMoneyNative(hover.close, currency)}</span>
+          {mode === "candle" ? (
+            <>
+              <span>O {formatMoneyNative(hover.open, currency)}</span>
+              <span>H {formatMoneyNative(hover.high, currency)}</span>
+              <span>L {formatMoneyNative(hover.low, currency)}</span>
+              <span>C {formatMoneyNative(hover.close, currency)}</span>
+            </>
+          ) : (
+            <span>{formatMoneyNative(hover.close, currency)}</span>
+          )}
         </div>
       )}
       <div ref={containerRef} className="w-full overflow-hidden rounded-xl" />
