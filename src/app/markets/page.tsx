@@ -3,17 +3,28 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
+import { formatMoney } from "@/lib/currency";
 import { DemoBanner } from "@/components/demo-banner";
 import { DemoLabel, PageHeader } from "@/components/ui";
+import { CurrencyToggle } from "@/components/currency-toggle";
+import { useCurrency } from "@/components/currency-provider";
 
 const tabs = ["All", "Favorites", "Top Gainers", "Top Losers"] as const;
+
+function parseSampleUsd(price: string): number {
+  const n = Number(price.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default function MarketsPage() {
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<(typeof tabs)[number]>("All");
+  const { currency } = useCurrency();
 
   const list = useMemo(() => {
-    let rows = [...SUPPORTED_ASSETS].filter((a) => a.symbol !== "USDT" && a.symbol !== "USDC");
+    let rows = [...SUPPORTED_ASSETS].filter(
+      (a) => a.symbol !== "USDT" && a.symbol !== "USDC"
+    );
     if (tab === "Top Gainers") rows = rows.filter((a) => a.samplePositive);
     if (tab === "Top Losers") rows = rows.filter((a) => !a.samplePositive);
     if (q.trim()) {
@@ -29,10 +40,13 @@ export default function MarketsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Markets"
-        subtitle="Sample market figures · Demo only"
-      />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader
+          title="Markets"
+          subtitle="Sample market figures · Demo only"
+        />
+        <CurrencyToggle variant="default" />
+      </div>
       <DemoBanner compact />
 
       <div className="relative">
@@ -68,48 +82,52 @@ export default function MarketsPage() {
       <div className="mx-card overflow-hidden">
         <div className="grid grid-cols-[1fr_auto_auto] gap-2 border-b border-[var(--mx-border)] px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--mx-text-soft)]">
           <span>Coin</span>
-          <span className="text-right">Price</span>
+          <span className="text-right">Price ({currency})</span>
           <span className="w-16 text-right">24h</span>
         </div>
         <ul className="divide-y divide-[var(--mx-border)]">
-          {list.map((a, i) => (
-            <li
-              key={a.symbol}
-              className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="w-4 text-xs text-[var(--mx-text-soft)]">
-                  {i + 1}
-                </span>
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: a.color }}
-                >
-                  {a.mark}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--mx-text)]">
-                    {a.name}
-                  </p>
-                  <p className="text-xs text-[var(--mx-text-muted)]">
-                    {a.symbol}
-                  </p>
-                </div>
-              </div>
-              <p className="text-right text-sm font-semibold text-[var(--mx-text)]">
-                {a.samplePrice}
-              </p>
-              <p
-                className={`w-16 text-right text-xs font-semibold ${
-                  a.samplePositive
-                    ? "text-[var(--mx-success)]"
-                    : "text-[var(--mx-danger)]"
-                }`}
+          {list.map((a, i) => {
+            const usd = parseSampleUsd(a.samplePrice);
+            const priceLabel = formatMoney(usd, currency);
+            return (
+              <li
+                key={a.symbol}
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5"
               >
-                {a.sampleChange}
-              </p>
-            </li>
-          ))}
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="w-4 text-xs text-[var(--mx-text-soft)]">
+                    {i + 1}
+                  </span>
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: a.color }}
+                  >
+                    {a.mark}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--mx-text)]">
+                      {a.name}
+                    </p>
+                    <p className="text-xs text-[var(--mx-text-muted)]">
+                      {a.symbol}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-right text-sm font-semibold text-[var(--mx-text)]">
+                  {priceLabel}
+                </p>
+                <p
+                  className={`w-16 text-right text-xs font-semibold ${
+                    a.samplePositive
+                      ? "text-[var(--mx-success)]"
+                      : "text-[var(--mx-danger)]"
+                  }`}
+                >
+                  {a.sampleChange}
+                </p>
+              </li>
+            );
+          })}
           {list.length === 0 && (
             <li className="px-4 py-8 text-center text-sm text-[var(--mx-text-muted)]">
               No coins match your search
@@ -117,7 +135,7 @@ export default function MarketsPage() {
           )}
         </ul>
         <div className="border-t border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-4 py-2.5 text-center text-[11px] text-[var(--mx-text-soft)]">
-          Sample prices for UI preview · Not live market data
+          Sample prices · NGN uses illustrative sample FX · Not live market data
         </div>
       </div>
       <DemoLabel />

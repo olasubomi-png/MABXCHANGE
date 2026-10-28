@@ -12,7 +12,7 @@ export default function RewardsPage() {
       <div className="mx-card flex items-center justify-between p-5">
         <div>
           <p className="text-sm text-[var(--mx-text-muted)]">Your rewards</p>
-          <p className="mt-1 text-2xl font-bold text-[var(--mx-text)]">$0.00</p>
+          <p className="mt-1 text-2xl font-bold text-[var(--mx-text)]">$0.00 / ₦0.00</p>
           <p className="mt-1 text-xs text-[var(--mx-success)]">+0.00%</p>
         </div>
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(139,92,246,0.15)] text-[#a78bfa]">

@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
 import { DemoBanner } from "@/components/demo-banner";
+import { useCurrency } from "@/components/currency-provider";
 import { DemoLabel, PageHeader } from "@/components/ui";
 
 export default function TradePage() {
+  const { currency, format } = useCurrency();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [symbol, setSymbol] = useState("BTC");
   const [amount, setAmount] = useState("");
@@ -72,7 +74,7 @@ export default function TradePage() {
 
         <div>
           <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-[var(--mx-text-soft)]">
-            Amount (USD)
+            Amount ({currency})
           </label>
           <input
             type="number"
@@ -98,7 +100,7 @@ export default function TradePage() {
         </div>
 
         <p className="text-xs text-[var(--mx-text-soft)]">
-          Sample price: {asset?.samplePrice ?? "—"} · You&apos;ll receive (approx.) —
+          Sample price: {asset?.samplePrice ?? "—"} · Display {format(0)} · You&apos;ll receive (approx.) —
         </p>
 
         {notice && (

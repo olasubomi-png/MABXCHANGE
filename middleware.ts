@@ -10,6 +10,7 @@ export const config = {
     "/markets/:path*",
     "/trade/:path*",
     "/wallet/:path*",
+    "/swap/:path*",
     "/activity/:path*",
     "/rewards/:path*",
     "/profile/:path*",

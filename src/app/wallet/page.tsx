@@ -4,9 +4,11 @@ import { useState } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Repeat } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
 import { DemoBanner } from "@/components/demo-banner";
+import { useCurrency } from "@/components/currency-provider";
 import { DemoLabel, PageHeader } from "@/components/ui";
 
 export default function WalletPage() {
+  const { format } = useCurrency();
   const [notice, setNotice] = useState<string | null>(null);
 
   function explain(action: string) {
@@ -23,7 +25,7 @@ export default function WalletPage() {
       <div className="mx-card overflow-hidden">
         <div className="bg-gradient-to-br from-[var(--mx-primary)] to-[#1a3fd9] px-5 py-5 text-white">
           <p className="text-sm text-blue-100">Total balance</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight">$0.00</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight">{format(0)}</p>
           <p className="mt-1 text-xs text-blue-200">+0.00% (24h) · Demo</p>
         </div>
         <div className="grid grid-cols-3 gap-2 p-4">
@@ -82,7 +84,7 @@ export default function WalletPage() {
                 <p className="text-sm font-semibold text-[var(--mx-text)]">
                   0.0000
                 </p>
-                <p className="text-xs text-[var(--mx-text-soft)]">$0.00</p>
+                <p className="text-xs text-[var(--mx-text-soft)]">{format(0)}</p>
               </div>
             </li>
           ))}

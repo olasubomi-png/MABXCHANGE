@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
+import { useCurrency } from "./currency-provider";
 
 export function HoldingsList() {
+  const { format } = useCurrency();
   const assets = SUPPORTED_ASSETS.filter(
     (a) => a.symbol === "BTC" || a.symbol === "ETH" || a.symbol === "USDT"
   );
@@ -44,7 +48,7 @@ export function HoldingsList() {
               <p className="text-sm font-semibold text-[var(--mx-text)]">
                 0.0000
               </p>
-              <p className="text-xs text-[var(--mx-text-soft)]">$0.00</p>
+              <p className="text-xs text-[var(--mx-text-soft)]">{format(0)}</p>
             </div>
           </li>
         ))}

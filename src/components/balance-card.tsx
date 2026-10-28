@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { CurrencyToggle, type Currency } from "./currency-toggle";
+import { CurrencyToggle } from "./currency-toggle";
+import { useCurrency } from "./currency-provider";
 
 export function BalanceCard() {
   const [hidden, setHidden] = useState(false);
-  const [currency, setCurrency] = useState<Currency>("NGN");
+  const { format, currency } = useCurrency();
+  const display = format(0);
 
   return (
     <div className="mx-card-elevated overflow-hidden">
@@ -18,7 +20,7 @@ export function BalanceCard() {
             </p>
             <div className="mt-2 flex items-center gap-3">
               <p className="text-3xl font-bold tracking-tight sm:text-4xl">
-                {hidden ? "••••••" : "$0.00"}
+                {hidden ? "••••••" : display}
               </p>
               <button
                 type="button"
@@ -30,12 +32,13 @@ export function BalanceCard() {
               </button>
             </div>
             <p className="mt-1.5 text-xs text-[var(--mx-success)]">
-              {hidden ? "Balance hidden" : "+0.00% (24h) · Demo only"}
+              {hidden
+                ? "Balance hidden"
+                : `+0.00% (24h) · Demo only · ${currency}`}
             </p>
           </div>
-          <CurrencyToggle value={currency} onChange={setCurrency} />
+          <CurrencyToggle />
         </div>
-        {/* Decorative sparkline placeholder */}
         <svg
           className="mt-4 h-10 w-full opacity-80"
           viewBox="0 0 200 40"
@@ -51,7 +54,7 @@ export function BalanceCard() {
         </svg>
       </div>
       <div className="border-t border-white/10 bg-[var(--mx-primary)]/90 px-5 py-2.5 text-center text-xs text-blue-100">
-        No live balance connected · Sandbox portfolio shows $0.00
+        No live balance connected · Sandbox portfolio shows {display}
       </div>
     </div>
   );
