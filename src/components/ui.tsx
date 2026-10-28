@@ -75,7 +75,7 @@ export function EmptyState({
 export function DemoLabel({ children }: { children?: ReactNode }) {
   return (
     <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
-      {children ?? "Demo UI · Sample data only · Not live trading"}
+      {children ?? "Market prices are live · Trading not enabled"}
     </p>
   );
 }

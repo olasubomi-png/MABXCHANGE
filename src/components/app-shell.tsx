@@ -10,7 +10,6 @@ import {
   User,
 } from "lucide-react";
 import { BrandMark } from "./brand-mark";
-import { DemoBanner } from "./demo-banner";
 import { LiveStatusBadge } from "./live-market-provider";
 
 const navItems = [
@@ -35,8 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Demo
             </span>
           </div>
-          <DemoBanner />
-        </header>
+          </header>
       )}
 
       <main

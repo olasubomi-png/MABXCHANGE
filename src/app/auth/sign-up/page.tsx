@@ -62,7 +62,7 @@ function SignUpForm() {
             Create account
           </h1>
           <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
-            Join the MABXCHANGE demo
+            Create your MABXCHANGE account
           </p>
         </div>
       </div>

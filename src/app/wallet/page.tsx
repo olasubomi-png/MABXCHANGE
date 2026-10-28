@@ -13,20 +13,20 @@ export default function WalletPage() {
 
   function explain(action: string) {
     setNotice(
-      `${action} is unavailable in the demo. No funds move and no backend order is created.`
+      `${action} is not available yet. No funds move and no order is created.`
     );
   }
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Wallet" subtitle="Sandbox balances · Demo only" />
+      <PageHeader title="Wallet" subtitle="Balances · Funding not enabled" />
       <DemoBanner compact />
 
       <div className="mx-card overflow-hidden">
         <div className="bg-gradient-to-br from-[var(--mx-primary)] to-[#1a3fd9] px-5 py-5 text-white">
           <p className="text-sm text-blue-100">Total balance</p>
           <p className="mt-1 text-3xl font-bold tracking-tight">{format(0)}</p>
-          <p className="mt-1 text-xs text-blue-200">+0.00% (24h) · Demo</p>
+          <p className="mt-1 text-xs text-blue-200">+0.00% (24h)</p>
         </div>
         <div className="grid grid-cols-3 gap-2 p-4">
           {[

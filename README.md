@@ -1,71 +1,51 @@
 # MABXCHANGE
 
-Premium, mobile-first crypto exchange dashboard demo with Neon Managed Auth.
-
-## Current scope
-
-- Light fintech theme (white / grey / blue accents)
-- Next.js 16 + React 19 + Tailwind 4
-- Neon Managed Auth (Better Auth) — sign-up, sign-in, sign-out, sessions
-- Profile page shows authenticated user data (linked to `app_users`)
-- Home dashboard, Activity, Rewards remain demo UI
-- Mobile bottom navigation
-- Clear **Demo UI only** banners everywhere
-
-## Important safety boundary
-
-This repository is a **UI + auth prototype only**.
-
-- No real balances, prices, or transactions are connected
-- Deposit, Trade, Swap, and Send actions open explanatory unavailable modals
-- Never accept customer funds or enable live trades until legal/regulatory review, identity controls, secure custody, ledger accounting, monitoring, and security testing are complete
-- Do not invent balances or simulate successful financial operations
-
-## Environment variables (Vercel)
-
-| Name | Required | Notes |
-|------|----------|-------|
-| `DATABASE_URL` | Yes | Already configured in Vercel. Neon Postgres connection string. |
-| `NEON_AUTH_BASE_URL` | Yes | `https://ep-falling-sun-b5ae4ej3.neonauth.c-7.us-east-2.aws.neon.tech/mabxchange/auth` |
-| `NEON_AUTH_COOKIE_SECRET` | Yes | Generate with `openssl rand -base64 32`. Must be ≥ 32 characters. **Never commit this value.** |
-
-Also add `https://mabxchange.vercel.app` (and your preview URLs) as trusted domains in the Neon Console → Auth → Configuration → Domains.
-
-## Local development
-
-```bash
-npm install
-cp .env.example .env.local   # then fill the three variables above
-npm run dev
-```
-
-Open http://localhost:3000.
-
-## Verify before deployment
-
-```bash
-npm run build
-npm run lint
-```
-
-## Deploy to Vercel
-
-1. Push to `olasubomi-png/MABXCHANGE`.
-2. Confirm the three environment variables are set in the Vercel project.
-3. Redeploy.
-
-## Tech stack
-
-- Next.js 16 (App Router)
-- React 19
-- Tailwind CSS 4
-- TypeScript
-- Neon Managed Auth (`@neondatabase/auth`)
-- Neon Serverless Postgres (`@neondatabase/serverless`)
-- lucide-react icons
+Crypto markets interface built with Next.js 16, Neon Auth, Neon PostgreSQL, and Vercel.
 
 ## Market data
 
-Set `COINGECKO_API_KEY` (CoinGecko Demo) in Vercel. The key is read only on the server via `x-cg-demo-api-key`. Never expose it as `NEXT_PUBLIC_*`.
-Prices may be delayed under the Demo plan. Trading remains sandbox-only.
+| Layer | Provider | Notes |
+|-------|----------|--------|
+| Snapshots, 24h stats, NGN quotes | CoinGecko Demo API | Server-only `COINGECKO_API_KEY` + `x-cg-demo-api-key` |
+| Live last price (USD) | Kraken WebSocket ticker | Browser client, no API key |
+| Historical OHLC | Kraken REST → CoinGecko OHLC fallback | Server `/api/market/ohlc` |
 
+**Binance is not used** (HTTP 451 / geo restrictions on many hosts).
+
+Live status appears in the header (Live / Reconnecting / Delayed). Polling is labeled **Delayed**, not Live.
+
+### Supported live Kraken pairs
+
+BTC, ETH, SOL, XRP, DOGE, BNB (USD). USDT/USDC have no Kraken ticker in this app.
+
+## Authentication
+
+- Neon Managed Auth (Better Auth) + Google OAuth
+- Env: `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, `DATABASE_URL`
+
+## Trading, wallet, deposits
+
+**Not enabled.** UI explains that orders, deposits, withdrawals, and swaps are unavailable. Balances stay at zero until a custody/liquidity provider is integrated. No fake fills or ledger success messages.
+
+## Environment variables
+
+```bash
+DATABASE_URL=
+NEON_AUTH_BASE_URL=
+NEON_AUTH_COOKIE_SECRET=
+COINGECKO_API_KEY=
+```
+
+Never use `NEXT_PUBLIC_` for secrets.
+
+## Development
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+## License
+
+Private project.

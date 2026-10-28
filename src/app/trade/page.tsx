@@ -33,7 +33,7 @@ function TradePageInner() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setNotice(
-      "Trading is disabled in this demo. No orders are submitted and no funds move."
+      "Trading is not enabled yet. No orders are submitted and no funds move."
     );
   }
 
@@ -51,7 +51,7 @@ function TradePageInner() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Trade" subtitle="Buy & sell · Sandbox only" />
+      <PageHeader title="Trade" subtitle="Buy & sell · Not enabled yet" />
       <DemoBanner compact />
 
       {error && (
@@ -133,7 +133,7 @@ function TradePageInner() {
         </button>
 
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
-          Demo account · No real money · Prices from CoinGecko Demo
+          Prices are live · Order execution is not enabled
         </p>
       </form>
       <DemoLabel />

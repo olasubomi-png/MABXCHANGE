@@ -15,7 +15,7 @@ export default function ActivityPage() {
       <div>
         <h1 className="text-xl font-bold tracking-tight text-[var(--mx-text)]">Activity</h1>
         <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
-          Transaction history · Demo only
+          Transaction history
         </p>
       </div>
 

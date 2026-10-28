@@ -35,4 +35,4 @@ export const SUPPORTED_ASSETS: AssetMeta[] = [
 export const COINGECKO_IDS = SUPPORTED_ASSETS.map((a) => a.coingeckoId);
 
 export const DEMO_NOTICE =
-  "Demo UI only · Market prices via CoinGecko Demo · No real balances or live trades";
+  "Market prices via CoinGecko and Kraken · Trading not enabled";

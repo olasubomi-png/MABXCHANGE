@@ -40,7 +40,7 @@ function SwapPageInner() {
     if (toTarget === "NGN") {
       if (currency === "NGN") {
         return {
-          label: "Estimated NGN (CoinGecko Demo)",
+          label: "Estimated NGN (indicative)",
           value: formatMoneyNative(value, "NGN"),
           detail: "Quote uses CoinGecko ngn price · Not executed",
         };
@@ -65,9 +65,9 @@ function SwapPageInner() {
       };
     }
     return {
-      label: `Estimated ${toTarget} (sample ~$1)`,
+      label: `Estimated ${toTarget} (indicative)`,
       value: `${usdApprox.toFixed(2)} ${toTarget}`,
-      detail: "Illustrative stablecoin parity · Sandbox · Not executed",
+      detail: "Indicative quote · Not executed",
     };
   }, [validQty, qty, market, toTarget, currency]);
 
@@ -82,7 +82,7 @@ function SwapPageInner() {
     setTimeout(() => {
       setSubmitting(false);
       setNotice(
-        "Swap not executed. Sandbox balance is 0 — insufficient funds. No ledger entry was created."
+        "Swap not executed. Funding and swaps are not enabled yet. No ledger entry was created."
       );
     }, 400);
   }
@@ -91,7 +91,7 @@ function SwapPageInner() {
     <div className="space-y-5">
       <PageHeader
         title="Swap"
-        subtitle="Crypto → NGN or stables · Sandbox only"
+        subtitle="Crypto → NGN or stables · Not enabled yet"
       />
       <DemoBanner compact />
 
@@ -188,11 +188,11 @@ function SwapPageInner() {
           disabled={submitting}
           className="mx-btn mx-btn-primary w-full py-3 disabled:opacity-60"
         >
-          {submitting ? "Checking…" : "Preview swap (sandbox)"}
+          {submitting ? "Checking…" : "Preview swap (unavailable)"}
         </button>
 
         <p className="text-center text-[11px] text-[var(--mx-text-soft)]">
-          Simulated only · CoinGecko Demo prices · No real conversion
+          Indicative prices · Conversion not executed
         </p>
       </form>
       <DemoLabel />

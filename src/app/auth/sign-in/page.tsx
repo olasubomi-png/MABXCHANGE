@@ -128,7 +128,7 @@ function SignInForm() {
             Sign in
           </h1>
           <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
-            Access your MABXCHANGE demo account
+            Sign in to your MABXCHANGE account
           </p>
         </div>
       </div>
@@ -246,7 +246,7 @@ function SignInForm() {
       </p>
 
       <p className="text-center text-xs text-[var(--mx-text-soft)]">
-        Demo environment · No real funds or live trading
+        Trading and transfers are not enabled yet
       </p>
     </div>
   );

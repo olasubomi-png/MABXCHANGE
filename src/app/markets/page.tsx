@@ -49,7 +49,7 @@ export default function MarketsPage() {
       <div className="flex items-start justify-between gap-3">
         <PageHeader
           title="Markets"
-          subtitle="CoinGecko Demo · Prices may be delayed"
+          subtitle="CoinGecko + Kraken live updates"
         />
         <div className="flex items-center gap-2">
           <button
@@ -187,7 +187,7 @@ export default function MarketsPage() {
         <div className="border-t border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-4 py-2.5 text-center text-[11px] text-[var(--mx-text-soft)]">
           {fetchedAt
             ? `Updated ${new Date(fetchedAt).toLocaleTimeString()}${delayed ? " · Demo plan (may be delayed)" : ""}`
-            : "CoinGecko Demo · Not a trading venue"}
+            : "Market data for information only · Not a trading venue"}
         </div>
       </div>
       <DemoLabel />

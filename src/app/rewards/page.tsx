@@ -6,7 +6,7 @@ import { DemoLabel, PageHeader } from "@/components/ui";
 export default function RewardsPage() {
   return (
     <div className="space-y-5">
-      <PageHeader title="Rewards" subtitle="Loyalty & referrals · Demo" />
+      <PageHeader title="Rewards" subtitle="Loyalty & referrals · Coming soon" />
       <DemoBanner compact />
 
       <div className="mx-card flex items-center justify-between p-5">
@@ -26,7 +26,7 @@ export default function RewardsPage() {
         </h2>
         <p className="text-sm text-[var(--mx-text-muted)]">
           Invite friends and earn rewards when the program is enabled. Codes
-          shown here are demo placeholders.
+          will appear here when the program is enabled.
         </p>
         <div className="flex items-center gap-2 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-3 py-2.5">
           <code className="flex-1 text-sm font-medium text-[var(--mx-text)]">
@@ -62,7 +62,7 @@ export default function RewardsPage() {
       <div className="mx-card flex flex-col items-center px-6 py-10 text-center">
         <Sparkles size={28} className="text-[var(--mx-text-soft)]" />
         <p className="mt-3 text-sm text-[var(--mx-text-muted)]">
-          Rewards engine is not connected. No real bonuses are issued.
+          Rewards are not enabled yet.
         </p>
         <Link
           href="/markets"

@@ -82,7 +82,7 @@ export default async function ProfilePage() {
           Profile
         </h1>
         <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
-          Account settings · Demo only
+          Account settings
         </p>
       </div>
 

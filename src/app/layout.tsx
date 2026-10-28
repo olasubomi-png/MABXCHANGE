@@ -4,9 +4,9 @@ import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MABXCHANGE | Crypto exchange demo",
+  title: "MABXCHANGE | Crypto markets",
   description:
-    "Premium crypto exchange dashboard demo. No real balances, deposits, or trades are enabled.",
+    "Live crypto market data with Kraken and CoinGecko. Trading, deposits, and withdrawals are not enabled yet.",
   applicationName: "MABXCHANGE",
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],

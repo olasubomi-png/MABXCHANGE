@@ -54,7 +54,7 @@ export function HoldingsList() {
         ))}
       </ul>
       <div className="border-t border-[var(--mx-border)] bg-[var(--mx-surface-2)] px-4 py-3 text-center text-xs text-[var(--mx-text-muted)] sm:px-5">
-        Sandbox balances · No live holdings connected
+        No funded holdings yet · Market prices are live
       </div>
     </div>
   );

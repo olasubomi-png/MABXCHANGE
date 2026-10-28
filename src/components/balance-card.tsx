@@ -34,7 +34,7 @@ export function BalanceCard() {
             <p className="mt-1.5 text-xs text-[var(--mx-success)]">
               {hidden
                 ? "Balance hidden"
-                : `+0.00% (24h) · Demo only · ${currency}`}
+                : `+0.00% (24h) · ${currency}`}
             </p>
           </div>
           <CurrencyToggle />
@@ -54,7 +54,7 @@ export function BalanceCard() {
         </svg>
       </div>
       <div className="border-t border-white/10 bg-[var(--mx-primary)]/90 px-5 py-2.5 text-center text-xs text-blue-100">
-        No live balance connected · Sandbox portfolio shows {display}
+        No funded balance yet · Portfolio shows {display}
       </div>
     </div>
   );
