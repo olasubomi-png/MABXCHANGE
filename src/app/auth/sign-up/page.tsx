@@ -69,7 +69,7 @@ function SignUpForm() {
 
       <form onSubmit={handleSubmit} className="mx-card space-y-4 p-5">
         {error && (
-          <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-red-100">
+          <div className="rounded-xl mx-banner-danger px-3.5 py-2.5 text-sm">
             {error}
           </div>
         )}
@@ -89,7 +89,7 @@ function SignUpForm() {
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[var(--mx-border)] bg-white py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/20"
+              className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/25"
               placeholder="Optional"
             />
           </div>
@@ -111,7 +111,7 @@ function SignUpForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-[var(--mx-border)] bg-white py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/20"
+              className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/25"
               placeholder="you@example.com"
             />
           </div>
@@ -134,7 +134,7 @@ function SignUpForm() {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-[var(--mx-border)] bg-white py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/20"
+              className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/25"
               placeholder="At least 8 characters"
             />
           </div>

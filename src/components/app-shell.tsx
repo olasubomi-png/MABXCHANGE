@@ -18,8 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--mx-bg)]">
-      {/* Top header */}
-      <header className="sticky top-0 z-40 border-b border-[var(--mx-border)] bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-[var(--mx-border)] bg-[var(--mx-surface)]/90 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4 sm:max-w-2xl sm:px-6">
           <Link href="/" className="flex items-center gap-2.5" aria-label="MABXCHANGE home">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--mx-primary)] text-sm font-black text-white">
@@ -29,14 +28,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               MAB<span className="text-[var(--mx-primary)]">XCHANGE</span>
             </span>
           </Link>
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200">
+          <span className="rounded-full bg-[var(--mx-warning-soft)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--mx-warning)] ring-1 ring-[var(--mx-warning)]/30">
             Demo
           </span>
         </div>
         <DemoBanner />
       </header>
 
-      {/* Main content */}
       <main
         className={`mx-auto w-full max-w-lg flex-1 px-4 pt-5 sm:max-w-2xl sm:px-6 ${
           isAuthRoute
@@ -47,10 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom navigation — hidden on auth screens */}
       {!isAuthRoute && (
         <nav
-          className="mx-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mx-border)] bg-white/95 backdrop-blur-md"
+          className="mx-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--mx-border)] bg-[var(--mx-surface)]/95 backdrop-blur-md"
           aria-label="Main"
         >
           <div className="mx-auto flex h-[var(--nav-height)] max-w-lg items-stretch sm:max-w-2xl">

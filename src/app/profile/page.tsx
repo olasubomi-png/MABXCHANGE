@@ -89,7 +89,7 @@ export default async function ProfilePage() {
       <DemoBanner compact />
 
       {dbError && (
-        <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
+        <div className="rounded-xl mx-banner-warning px-3.5 py-2.5 text-sm">
           We could not load full account details from the database. You are
           still signed in with Neon Auth. Try again shortly.
         </div>
@@ -116,7 +116,7 @@ export default async function ProfilePage() {
         </div>
         <div className="flex items-center justify-between px-4 py-3.5">
           <span className="text-sm text-[var(--mx-text-muted)]">Account status</span>
-          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold capitalize text-amber-800 ring-1 ring-amber-200">
+          <span className="rounded-full bg-[var(--mx-warning-soft)] px-2.5 py-0.5 text-xs font-semibold capitalize text-[var(--mx-warning)] ring-1 ring-[var(--mx-warning)]/30">
             {sandboxStatus}
           </span>
         </div>

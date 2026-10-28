@@ -14,7 +14,7 @@ export default function RewardsPage() {
       <DemoBanner compact />
 
       <div className="mx-card flex flex-col items-center px-6 py-14 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-50 text-violet-500">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[rgba(139,92,246,0.15)] text-[#a78bfa]">
           <Gift size={32} strokeWidth={1.75} />
         </div>
         <h2 className="mt-5 text-lg font-semibold text-[var(--mx-text)]">

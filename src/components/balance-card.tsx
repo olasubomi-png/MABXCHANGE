@@ -10,7 +10,7 @@ export function BalanceCard() {
 
   return (
     <div className="mx-card-elevated overflow-hidden">
-      <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-5 py-5 text-white sm:px-6 sm:py-6">
+      <div className="bg-gradient-to-br from-[var(--mx-primary)] to-[#1a3fd9] px-5 py-5 text-white sm:px-6 sm:py-6">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm font-medium text-blue-100">Total balance</p>
@@ -34,7 +34,7 @@ export function BalanceCard() {
           <CurrencyToggle value={currency} onChange={setCurrency} />
         </div>
       </div>
-      <div className="border-t border-blue-500/20 bg-blue-600/95 px-5 py-3 text-center text-xs text-blue-100 sm:px-6">
+      <div className="border-t border-white/10 bg-[var(--mx-primary)]/90 px-5 py-3 text-center text-xs text-blue-100 sm:px-6">
         Balances and prices require a connected backend · Currently unavailable
       </div>
     </div>

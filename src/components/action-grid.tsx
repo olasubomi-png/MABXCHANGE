@@ -4,10 +4,30 @@ import { useState } from "react";
 import { ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Repeat2, X } from "lucide-react";
 
 const actions = [
-  { id: "deposit", label: "Deposit", icon: ArrowDownToLine, color: "bg-emerald-50 text-emerald-600" },
-  { id: "trade", label: "Trade", icon: ArrowLeftRight, color: "bg-blue-50 text-blue-600" },
-  { id: "swap", label: "Swap", icon: Repeat2, color: "bg-violet-50 text-violet-600" },
-  { id: "send", label: "Send", icon: ArrowUpRight, color: "bg-orange-50 text-orange-600" },
+  {
+    id: "deposit",
+    label: "Deposit",
+    icon: ArrowDownToLine,
+    color: "bg-[var(--mx-success-soft)] text-[var(--mx-success)]",
+  },
+  {
+    id: "trade",
+    label: "Trade",
+    icon: ArrowLeftRight,
+    color: "bg-[var(--mx-primary-soft)] text-[var(--mx-primary)]",
+  },
+  {
+    id: "swap",
+    label: "Swap",
+    icon: Repeat2,
+    color: "bg-[rgba(139,92,246,0.15)] text-[#a78bfa]",
+  },
+  {
+    id: "send",
+    label: "Send",
+    icon: ArrowUpRight,
+    color: "bg-[var(--mx-warning-soft)] text-[var(--mx-warning)]",
+  },
 ] as const;
 
 export function ActionGrid() {
@@ -21,25 +41,29 @@ export function ActionGrid() {
             key={a.id}
             type="button"
             onClick={() => setOpen(a.id)}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--mx-border)] bg-white p-3 shadow-sm transition active:scale-[0.97] hover:border-[var(--mx-border-strong)] hover:shadow"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-surface)] p-3 shadow-sm transition active:scale-[0.97] hover:border-[var(--mx-border-strong)] hover:bg-[var(--mx-surface-2)]"
           >
-            <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${a.color}`}>
+            <span
+              className={`flex h-11 w-11 items-center justify-center rounded-xl ${a.color}`}
+            >
               <a.icon size={20} strokeWidth={2.25} />
             </span>
-            <span className="text-xs font-semibold text-[var(--mx-text)]">{a.label}</span>
+            <span className="text-xs font-semibold text-[var(--mx-text)]">
+              {a.label}
+            </span>
           </button>
         ))}
       </div>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
           onClick={() => setOpen(null)}
           role="dialog"
           aria-modal="true"
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+            className="w-full max-w-sm rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-surface)] p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
@@ -47,7 +71,9 @@ export function ActionGrid() {
                 <h3 className="text-lg font-bold text-[var(--mx-text)]">
                   {actions.find((a) => a.id === open)?.label}
                 </h3>
-                <p className="mt-1 text-sm text-[var(--mx-text-muted)]">Unavailable in demo</p>
+                <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
+                  Unavailable in demo
+                </p>
               </div>
               <button
                 type="button"
@@ -59,8 +85,9 @@ export function ActionGrid() {
               </button>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-[var(--mx-text-muted)]">
-              This action is not connected to a live backend. Deposits, trades, swaps, and sends
-              remain disabled until custody, ledger, and provider integrations are in place.
+              This action is not connected to a live backend. Deposits, trades,
+              swaps, and sends remain disabled until custody, ledger, and
+              provider integrations are in place.
             </p>
             <button
               type="button"

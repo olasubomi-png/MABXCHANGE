@@ -139,7 +139,7 @@ function SignInForm() {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--mx-border)] bg-white py-2.5 text-sm font-medium text-[var(--mx-text)] shadow-sm transition hover:bg-slate-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface)] py-2.5 text-sm font-medium text-[var(--mx-text)] shadow-sm transition hover:bg-[var(--mx-surface-2)] hover:border-[var(--mx-border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {googleLoading ? (
             <Loader2 size={18} className="animate-spin text-[var(--mx-text-muted)]" />
@@ -160,7 +160,7 @@ function SignInForm() {
 
       <form onSubmit={handleSubmit} className="mx-card space-y-4 p-5">
         {error && (
-          <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700 ring-1 ring-red-100">
+          <div className="rounded-xl mx-banner-danger px-3.5 py-2.5 text-sm">
             {error}
           </div>
         )}
@@ -185,7 +185,7 @@ function SignInForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={busy}
-              className="w-full rounded-xl border border-[var(--mx-border)] bg-white py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/20 disabled:opacity-60"
+              className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/25 disabled:opacity-60"
               placeholder="you@example.com"
             />
           </div>
@@ -211,7 +211,7 @@ function SignInForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={busy}
-              className="w-full rounded-xl border border-[var(--mx-border)] bg-white py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/20 disabled:opacity-60"
+              className="w-full rounded-xl border border-[var(--mx-border)] bg-[var(--mx-surface-2)] py-2.5 pl-10 pr-3 text-sm text-[var(--mx-text)] outline-none transition placeholder:text-[var(--mx-text-soft)] focus:border-[var(--mx-primary)] focus:ring-2 focus:ring-[var(--mx-primary)]/25 disabled:opacity-60"
               placeholder="••••••••"
             />
           </div>

@@ -25,7 +25,7 @@ export function SignOutButton() {
       type="button"
       onClick={handleSignOut}
       disabled={loading}
-      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--mx-danger)]/40 bg-[var(--mx-danger-soft)] py-2.5 text-sm font-medium text-[var(--mx-danger)] transition hover:bg-[rgba(255,77,94,0.2)] disabled:opacity-60"
     >
       {loading ? (
         <Loader2 size={16} className="animate-spin" />

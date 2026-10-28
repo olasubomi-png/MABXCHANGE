@@ -23,7 +23,7 @@ export default function ActivityPage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="mx-card p-4">
           <div className="flex items-center gap-2 text-[var(--mx-text-muted)]">
-            <ArrowDownLeft size={16} className="text-emerald-500" />
+            <ArrowDownLeft size={16} className="text-[var(--mx-success)]" />
             <span className="text-xs font-medium">Total bought</span>
           </div>
           <p className="mt-2 text-xl font-bold text-[var(--mx-text)]">—</p>
@@ -31,7 +31,7 @@ export default function ActivityPage() {
         </div>
         <div className="mx-card p-4">
           <div className="flex items-center gap-2 text-[var(--mx-text-muted)]">
-            <ArrowUpRight size={16} className="text-rose-500" />
+            <ArrowUpRight size={16} className="text-[var(--mx-danger)]" />
             <span className="text-xs font-medium">Total sold</span>
           </div>
           <p className="mt-2 text-xl font-bold text-[var(--mx-text)]">—</p>
@@ -97,7 +97,7 @@ export default function ActivityPage() {
           When a live backend is connected, your buys, sells, deposits, and swaps will appear
           here. Filters are ready for future data.
         </p>
-        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="mt-4 rounded-lg mx-banner-warning px-3 py-2 text-xs">
           Currently showing filters for: {typeFilter} · {statusFilter}
         </p>
       </div>
