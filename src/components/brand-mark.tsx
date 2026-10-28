@@ -1,39 +1,32 @@
 import Link from "next/link";
 
 type BrandMarkProps = {
-  /** Visual size of the icon */
   size?: "sm" | "md" | "lg" | "xl";
-  /** Show wordmark next to the icon */
   showWordmark?: boolean;
-  /** Show TRADE • INVEST • GROW under the wordmark */
   showTagline?: boolean;
-  /** Wrap in a home link */
   href?: string | null;
-  /** Extra class on the outer wrapper */
   className?: string;
-  /** Center-aligned stacked layout (auth screens) */
   stacked?: boolean;
+  /** Icon only, no dark plate (for compact headers) */
+  bare?: boolean;
 };
 
-const sizeMap = {
-  sm: 28,
-  md: 36,
-  lg: 48,
-  xl: 64,
-} as const;
+const sizeMap = { sm: 28, md: 36, lg: 52, xl: 72 } as const;
 
 /**
- * Custom MABXCHANGE mark: angular electric-blue M with an integrated
- * green upward-growth arrow. SVG for crisp rendering at every size.
+ * Angular electric-blue M with integrated green upward-growth arrow.
+ * Matches the MABXCHANGE brand sketches.
  */
 export function MabLogoIcon({
   size = 36,
   className = "",
   glowing = false,
+  bare = false,
 }: {
   size?: number;
   className?: string;
   glowing?: boolean;
+  bare?: boolean;
 }) {
   return (
     <svg
@@ -46,41 +39,51 @@ export function MabLogoIcon({
       aria-hidden="true"
       style={
         glowing
-          ? { filter: "drop-shadow(0 0 10px rgba(41, 98, 255, 0.55))" }
+          ? { filter: "drop-shadow(0 0 12px rgba(41, 98, 255, 0.6))" }
           : undefined
       }
     >
-      {/* Soft plate behind the mark */}
-      <rect
-        x="2"
-        y="2"
-        width="60"
-        height="60"
-        rx="14"
-        fill="#151E2E"
-        stroke="#263247"
-        strokeWidth="1.5"
-      />
-      {/* Angular M — electric blue */}
+      {!bare && (
+        <rect
+          x="1"
+          y="1"
+          width="62"
+          height="62"
+          rx="16"
+          fill="#111827"
+          stroke="#263247"
+          strokeWidth="1.5"
+        />
+      )}
+      {/* Left leg of M */}
       <path
-        d="M14 46 V18 L26 38 L32 26 L38 38 L50 18 V46"
+        d="M12 48 L12 16 L26 36 L32 24"
         stroke="#2962FF"
-        strokeWidth="5"
+        strokeWidth="6"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
       />
-      {/* Green growth arrow rising through the center valley */}
+      {/* Right leg becomes green growth arrow */}
       <path
-        d="M32 42 V22"
+        d="M32 24 L38 36 L46 18"
+        stroke="#2962FF"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Green arrow head + shaft rising */}
+      <path
+        d="M46 18 L46 42"
         stroke="#00C853"
-        strokeWidth="3.5"
+        strokeWidth="5"
         strokeLinecap="round"
       />
       <path
-        d="M24.5 30 L32 20 L39.5 30"
+        d="M38 28 L46 16 L54 28"
         stroke="#00C853"
-        strokeWidth="3.5"
+        strokeWidth="5"
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
@@ -96,6 +99,7 @@ export function BrandMark({
   href = "/",
   className = "",
   stacked = false,
+  bare = false,
 }: BrandMarkProps) {
   const px = sizeMap[size];
 
@@ -107,11 +111,11 @@ export function BrandMark({
           : `inline-flex items-center gap-2.5 ${className}`
       }
     >
-      <MabLogoIcon size={px} />
+      <MabLogoIcon size={px} bare={bare} />
       {showWordmark && (
         <span
           className={
-            stacked ? "flex flex-col items-center gap-0.5" : "flex flex-col"
+            stacked ? "flex flex-col items-center gap-0.5" : "flex flex-col leading-tight"
           }
         >
           <span
@@ -130,7 +134,7 @@ export function BrandMark({
             CHANGE
           </span>
           {showTagline && (
-            <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--mx-text-soft)]">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[var(--mx-text-soft)]">
               Trade · Invest · Grow
             </span>
           )}
@@ -146,6 +150,5 @@ export function BrandMark({
       </Link>
     );
   }
-
   return content;
 }

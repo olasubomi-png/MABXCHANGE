@@ -8,6 +8,7 @@ import { Greeting } from "@/components/greeting";
 import { BalanceCard } from "@/components/balance-card";
 import { ActionGrid } from "@/components/action-grid";
 import { HoldingsList } from "@/components/holdings-list";
+import { DemoLabel } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +46,7 @@ export default async function HomePage() {
       <BalanceCard />
       <ActionGrid />
       <HoldingsList />
-      <p className="pb-2 text-center text-xs text-[var(--mx-text-soft)]">
-        MABXCHANGE demo · Sandbox only · Not a live trading platform
-      </p>
+      <DemoLabel />
     </div>
   );
 }

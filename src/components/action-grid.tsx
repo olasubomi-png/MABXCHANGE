@@ -1,32 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpRight, Repeat2, X } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  Gift,
+  X,
+} from "lucide-react";
 
 const actions = [
   {
     id: "deposit",
     label: "Deposit",
     icon: ArrowDownToLine,
+    href: "/wallet",
     color: "bg-[var(--mx-success-soft)] text-[var(--mx-success)]",
   },
   {
     id: "trade",
     label: "Trade",
     icon: ArrowLeftRight,
+    href: "/trade",
     color: "bg-[var(--mx-primary-soft)] text-[var(--mx-primary)]",
   },
   {
-    id: "swap",
-    label: "Swap",
-    icon: Repeat2,
+    id: "rewards",
+    label: "Rewards",
+    icon: Gift,
+    href: "/rewards",
     color: "bg-[rgba(139,92,246,0.15)] text-[#a78bfa]",
-  },
-  {
-    id: "send",
-    label: "Send",
-    icon: ArrowUpRight,
-    color: "bg-[var(--mx-warning-soft)] text-[var(--mx-warning)]",
   },
 ] as const;
 
@@ -35,12 +38,11 @@ export function ActionGrid() {
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {actions.map((a) => (
-          <button
+          <Link
             key={a.id}
-            type="button"
-            onClick={() => setOpen(a.id)}
+            href={a.href}
             className="flex flex-col items-center gap-2 rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-surface)] p-3 shadow-sm transition active:scale-[0.97] hover:border-[var(--mx-border-strong)] hover:bg-[var(--mx-surface-2)]"
           >
             <span
@@ -51,7 +53,7 @@ export function ActionGrid() {
             <span className="text-xs font-semibold text-[var(--mx-text)]">
               {a.label}
             </span>
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -67,14 +69,9 @@ export function ActionGrid() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-[var(--mx-text)]">
-                  {actions.find((a) => a.id === open)?.label}
-                </h3>
-                <p className="mt-1 text-sm text-[var(--mx-text-muted)]">
-                  Unavailable in demo
-                </p>
-              </div>
+              <h3 className="text-lg font-bold text-[var(--mx-text)]">
+                Unavailable
+              </h3>
               <button
                 type="button"
                 onClick={() => setOpen(null)}
@@ -84,10 +81,8 @@ export function ActionGrid() {
                 <X size={20} />
               </button>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-[var(--mx-text-muted)]">
-              This action is not connected to a live backend. Deposits, trades,
-              swaps, and sends remain disabled until custody, ledger, and
-              provider integrations are in place.
+            <p className="mt-3 text-sm text-[var(--mx-text-muted)]">
+              This action is sandbox-only and not connected to live systems.
             </p>
             <button
               type="button"
