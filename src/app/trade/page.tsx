@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
 import { formatMoneyNative } from "@/lib/currency";
@@ -11,8 +12,10 @@ import { useMarketCoins } from "@/hooks/use-market-coins";
 export default function TradePage() {
   const { currency } = useCurrency();
   const { coins, loading, error } = useMarketCoins(currency);
+  const searchParams = useSearchParams();
+  const initialSymbol = (searchParams.get("symbol") || "BTC").toUpperCase();
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [symbol, setSymbol] = useState("BTC");
+  const [symbol, setSymbol] = useState(initialSymbol);
   const [amount, setAmount] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 

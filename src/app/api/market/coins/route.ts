@@ -4,10 +4,6 @@ import { fetchMarkets, hasCoingeckoKey } from "@/lib/coingecko";
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
-/**
- * GET /api/market/coins?vs=usd|ngn
- * Server-only CoinGecko Demo proxy. API key never sent to the client.
- */
 export async function GET(req: NextRequest) {
   const vsParam = (req.nextUrl.searchParams.get("vs") || "usd").toLowerCase();
   const vs = vsParam === "ngn" ? "ngn" : "usd";
@@ -36,11 +32,7 @@ export async function GET(req: NextRequest) {
       err instanceof Error ? err.message : "Failed to fetch market data";
     const status = message.includes("rate limit") ? 429 : 502;
     return NextResponse.json(
-      {
-        error: "Market data unavailable",
-        code: "UPSTREAM_ERROR",
-        message,
-      },
+      { error: "Market data unavailable", code: "UPSTREAM_ERROR", message },
       { status }
     );
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import { formatChangePct, formatMoneyNative } from "@/lib/currency";
@@ -121,9 +122,10 @@ export default function MarketsPage() {
               const positive =
                 a.priceChange24hPct !== null && a.priceChange24hPct >= 0;
               return (
-                <li
-                  key={a.symbol}
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5"
+                <li key={a.symbol}>
+                  <Link
+                  href={`/market/${a.id}`}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-4 py-3.5 transition hover:bg-[var(--mx-surface-2)]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="w-4 text-xs text-[var(--mx-text-soft)]">
@@ -160,6 +162,7 @@ export default function MarketsPage() {
                   >
                     {formatChangePct(a.priceChange24hPct)}
                   </p>
+                  </Link>
                 </li>
               );
             })}

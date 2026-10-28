@@ -8,6 +8,7 @@ export const config = {
   matcher: [
     "/",
     "/markets/:path*",
+    "/market/:path*",
     "/trade/:path*",
     "/wallet/:path*",
     "/swap/:path*",

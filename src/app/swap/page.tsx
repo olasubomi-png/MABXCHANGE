@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowDownUp } from "lucide-react";
 import { SUPPORTED_ASSETS } from "@/lib/assets";
@@ -16,7 +17,9 @@ export default function SwapPage() {
     (a) => a.symbol !== "USDT" && a.symbol !== "USDC"
   );
 
-  const [fromSymbol, setFromSymbol] = useState("BTC");
+  const searchParams = useSearchParams();
+  const initialFrom = (searchParams.get("from") || "BTC").toUpperCase();
+  const [fromSymbol, setFromSymbol] = useState(initialFrom);
   const [toTarget, setToTarget] = useState<"NGN" | "USDT" | "USDC">("NGN");
   const [amount, setAmount] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
