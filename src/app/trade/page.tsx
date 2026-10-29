@@ -30,11 +30,59 @@ function TradePageInner() {
     [coins, symbol]
   );
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setNotice(
-      "Trading is not enabled yet. No orders are submitted and no funds move."
-    );
+    setNotice(null);
+    const qty = Number(amount);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setNotice("Enter a valid amount greater than zero.");
+      return;
+    }
+    const px =
+      currency === "USD" && livePx != null
+        ? livePx
+        : market?.currentPrice != null
+          ? market.currentPrice
+          : null;
+    if (px == null || px <= 0) {
+      setNotice("Live price unavailable — cannot submit DEMO trade.");
+      return;
+    }
+    // Buy: spend quote (USDT) to get base; Sell: spend base to get USDT
+    const fromSymbol = side === "buy" ? "USDT" : symbol;
+    const toSymbol = side === "buy" ? symbol : "USDT";
+    const fromAmount = side === "buy" ? qty : qty; // amount field is in selected currency units for buy as quote, for sell as base
+    const rate = side === "buy" ? px : px;
+    const idempotencyKey = `sandbox-trade-${side}-${symbol}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      const res = await fetch("/api/sandbox/trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: side,
+          fromSymbol,
+          toSymbol,
+          fromAmount,
+          rate,
+          idempotencyKey,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotice(
+          body?.error ||
+            "DEMO trade rejected. Funded balances are required; real deposits are disabled."
+        );
+        return;
+      }
+      setNotice(
+        body?.duplicate
+          ? "DEMO: duplicate request — original sandbox trade returned."
+          : `DEMO trade recorded (${body.transactionId}). Not real settlement. Fee: ${body.fee ?? "—"}`
+      );
+    } catch {
+      setNotice("Network error submitting DEMO trade.");
+    }
   }
 
   const livePx = live.getPriceUsd(
@@ -51,7 +99,7 @@ function TradePageInner() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Trade" subtitle="Buy & sell · Not enabled yet" />
+      <PageHeader title="Trade" subtitle="Buy & sell · DEMO sandbox ledger" />
       <DemoBanner compact />
 
       {error && (
