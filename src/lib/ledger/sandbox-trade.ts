@@ -6,8 +6,9 @@
 
 import { postLedgerTransaction, findAvailableAccount } from "./service";
 import { isValueConserved } from "./conservation";
-export { isValueConserved } from "./conservation";
 import type { PostingResult, SandboxTradeKind } from "./types";
+
+export { isValueConserved } from "./conservation";
 
 export const SANDBOX_FEE_BPS = 10; // 0.10% transparent DEMO fee
 
