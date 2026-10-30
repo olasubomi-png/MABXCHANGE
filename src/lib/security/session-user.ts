@@ -1,25 +1,60 @@
 import { auth } from "@/lib/auth/server";
-import { provisionAuthenticatedUser } from "@/lib/db";
+import {
+  provisionAuthenticatedUser,
+  type AppUserRow,
+} from "@/lib/db";
 
-export async function requireAppUser() {
+export type SessionUser = {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+};
+
+export type RequireAppUserResult =
+  | {
+      ok: true;
+      session: { user: SessionUser };
+      appUser: AppUserRow;
+    }
+  | {
+      ok: false;
+      error: string;
+      status: 401 | 503;
+    };
+
+/**
+ * Server-side gate: authenticated Neon session + provisioned app_users row.
+ * Callers must branch on `result.ok` before accessing session/appUser.
+ */
+export async function requireAppUser(): Promise<RequireAppUserResult> {
   const { data: session } = await auth.getSession();
   if (!session?.user?.id) {
-    return { error: "Unauthorized" as const, status: 401 as const };
+    return { ok: false, error: "Unauthorized", status: 401 };
   }
+
   const { appUser, dbError } = await provisionAuthenticatedUser({
     id: session.user.id,
     email: session.user.email,
     name: session.user.name,
   });
+
   if (dbError || !appUser.id) {
     return {
+      ok: false,
       error: dbError || "Account unavailable",
-      status: 503 as const,
+      status: 503,
     };
   }
+
   return {
-    session,
+    ok: true,
+    session: {
+      user: {
+        id: session.user.id,
+        email: session.user.email ?? null,
+        name: session.user.name ?? null,
+      },
+    },
     appUser,
-    error: null as null,
   };
 }

@@ -6,10 +6,12 @@ import {
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
-  type AuthenticationResponseJSON,
-  type AuthenticatorTransportFuture,
-  type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
+import type {
+  AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
+  RegistrationResponseJSON,
+} from "./webauthn-types";
 import { Pool } from "@neondatabase/serverless";
 import { randomToken } from "./crypto";
 
@@ -135,7 +137,7 @@ export async function finishPasskeyRegistration(params: {
   }
 
   const verification = await verifyRegistrationResponse({
-    response: params.response,
+    response: params.response as Parameters<typeof verifyRegistrationResponse>[0]["response"],
     expectedChallenge: clientData.challenge,
     expectedOrigin: origin(),
     expectedRPID: rpID(),
@@ -237,7 +239,7 @@ export async function finishPasskeyAuthentication(params: {
     }
 
     const verification = await verifyAuthenticationResponse({
-      response: params.response,
+      response: params.response as Parameters<typeof verifyAuthenticationResponse>[0]["response"],
       expectedChallenge: clientData.challenge,
       expectedOrigin: origin(),
       expectedRPID: rpID(),

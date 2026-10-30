@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const authz = await requireAppUser();
-  if (authz.error) {
+  if (!authz.ok) {
     return NextResponse.json({ error: authz.error }, { status: authz.status });
   }
   try {
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const authz = await requireAppUser();
-  if (authz.error) {
+  if (!authz.ok) {
     return NextResponse.json({ error: authz.error }, { status: authz.status });
   }
   const body = await req.json().catch(() => ({}));

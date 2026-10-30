@@ -27,13 +27,13 @@ export async function POST(req: NextRequest) {
   try {
     if (phase === "begin") {
       const authz = await requireAppUser();
-      const userId = authz.error ? undefined : authz.appUser.id;
+      const userId = authz.ok ? authz.appUser.id : undefined;
       const options = await beginPasskeyAuthentication(userId);
       return NextResponse.json({ options });
     }
 
     const authz = await requireAppUser();
-    if (authz.error) {
+    if (!authz.ok) {
       return NextResponse.json(
         {
           error:
