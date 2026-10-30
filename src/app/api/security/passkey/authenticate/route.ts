@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const phase = body.phase === "finish" ? "finish" : "begin";
   const purpose = String(body.purpose || "security_settings");
 
-  const rl = rateLimit({
+  const rl = await rateLimit({
     key: `passkey-auth:${req.headers.get("x-forwarded-for") || "ip"}`,
     limit: 30,
     windowMs: 15 * 60_000,

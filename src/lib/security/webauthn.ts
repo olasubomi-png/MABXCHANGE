@@ -115,7 +115,7 @@ export async function beginPasskeyRegistration(userId: string, userName: string)
     })),
     authenticatorSelection: {
       residentKey: "preferred",
-      userVerification: "preferred",
+      userVerification: "required",
       authenticatorAttachment: "platform",
     },
   });
@@ -207,7 +207,7 @@ export async function beginPasskeyAuthentication(userId?: string) {
 
   const options = await generateAuthenticationOptions({
     rpID: rpID(),
-    userVerification: "preferred",
+    userVerification: "required",
     allowCredentials: allow.length ? allow : undefined,
   });
 

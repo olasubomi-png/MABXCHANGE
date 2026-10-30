@@ -46,3 +46,13 @@ curl -X POST "https://mabxchange.vercel.app/api/security/admin/migrate" \
 5. Optionally remove or rotate `SECURITY_MIGRATION_SECRET` after success.
 
 Never run destructive SQL against ledger or balance tables.
+
+## Phase 1 hardening
+
+- DB rate limits (`rate_limit_buckets`)
+- TOTP time-step replay table (`totp_used_steps`)
+- Step-up required for: remove passkey, disable TOTP, revoke all devices
+- WebAuthn `userVerification: "required"`
+- Neon Auth: no global session kill API wired; device revoke is app-level + honest messaging
+
+Apply migration 003 via `/api/security/admin/migrate` (runs 002+003) after deploy.

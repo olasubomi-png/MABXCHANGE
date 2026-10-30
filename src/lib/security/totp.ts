@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import * as OTPAuth from "otpauth";
 import { Pool } from "@neondatabase/serverless";
 import {
@@ -14,22 +13,43 @@ function pool() {
   return new Pool({ connectionString: url });
 }
 
-/** In-process replay prevention for accepted TOTP codes (per instance). */
-const usedCodes = new Map<string, number>();
-
-function markCodeUsed(userId: string, code: string) {
-  const key = `${userId}:${code}`;
-  usedCodes.set(key, Date.now() + 90_000);
-  // prune
-  const now = Date.now();
-  for (const [k, exp] of usedCodes) {
-    if (exp < now) usedCodes.delete(k);
-  }
+/** Unix time-step for 30s TOTP (RFC 6238). */
+export function totpTimeStep(nowMs: number = Date.now()): number {
+  return Math.floor(nowMs / 1000 / 30);
 }
 
-function wasCodeUsed(userId: string, code: string): boolean {
-  const exp = usedCodes.get(`${userId}:${code}`);
-  return Boolean(exp && exp > Date.now());
+/**
+ * Atomically record a used time-step. Returns false if already used (replay).
+ */
+export async function claimTotpTimeStep(
+  userId: string,
+  timeStep: number
+): Promise<boolean> {
+  const p = pool();
+  const client = await p.connect();
+  try {
+    const res = await client.query(
+      `INSERT INTO totp_used_steps (user_id, time_step, used_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id, time_step) DO NOTHING
+       RETURNING time_step`,
+      [userId, timeStep]
+    );
+    if (!res.rows[0]) return false;
+    try {
+      await client.query(
+        `UPDATE totp_secrets SET last_used_step = $2, updated_at = NOW()
+         WHERE user_id = $1`,
+        [userId, timeStep]
+      );
+    } catch {
+      /* column may not exist yet */
+    }
+    return true;
+  } finally {
+    client.release();
+    await p.end();
+  }
 }
 
 export async function beginTotpSetup(userId: string, accountName: string) {
@@ -72,9 +92,6 @@ export async function verifyAndEnableTotp(userId: string, code: string) {
   if (!/^\d{6}$/.test(code)) {
     return { ok: false as const, message: "Enter a 6-digit code" };
   }
-  if (wasCodeUsed(userId, code)) {
-    return { ok: false as const, message: "Code already used" };
-  }
 
   const p = pool();
   const client = await p.connect();
@@ -99,13 +116,24 @@ export async function verifyAndEnableTotp(userId: string, code: string) {
       return { ok: false as const, message: "Invalid authenticator code" };
     }
 
-    markCodeUsed(userId, code);
+    const step = totpTimeStep() + delta;
+    // claim outside this connection to avoid nested pool issues — use same client
+    const claim = await client.query(
+      `INSERT INTO totp_used_steps (user_id, time_step, used_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id, time_step) DO NOTHING
+       RETURNING time_step`,
+      [userId, step]
+    );
+    if (!claim.rows[0]) {
+      return { ok: false as const, message: "Code already used" };
+    }
+
     await client.query(
       `UPDATE totp_secrets SET enabled = TRUE, verified_at = NOW(), updated_at = NOW() WHERE user_id = $1`,
       [userId]
     );
 
-    // Replace recovery codes
     await client.query(`DELETE FROM recovery_codes WHERE user_id = $1`, [userId]);
     const codes = generateRecoveryCodes(10);
     for (const c of codes) {
@@ -124,7 +152,6 @@ export async function verifyAndEnableTotp(userId: string, code: string) {
 
 export async function verifyTotpCode(userId: string, code: string) {
   if (!/^\d{6}$/.test(code)) return false;
-  if (wasCodeUsed(userId, code)) return false;
 
   const p = pool();
   const client = await p.connect();
@@ -144,8 +171,16 @@ export async function verifyTotpCode(userId: string, code: string) {
     });
     const delta = totp.validate({ token: code, window: 1 });
     if (delta === null) return false;
-    markCodeUsed(userId, code);
-    return true;
+
+    const step = totpTimeStep() + delta;
+    const claim = await client.query(
+      `INSERT INTO totp_used_steps (user_id, time_step, used_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id, time_step) DO NOTHING
+       RETURNING time_step`,
+      [userId, step]
+    );
+    return Boolean(claim.rows[0]);
   } finally {
     client.release();
     await p.end();
@@ -201,6 +236,7 @@ export async function disableTotp(userId: string) {
   try {
     await client.query(`DELETE FROM totp_secrets WHERE user_id = $1`, [userId]);
     await client.query(`DELETE FROM recovery_codes WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM totp_used_steps WHERE user_id = $1`, [userId]);
   } finally {
     client.release();
     await p.end();

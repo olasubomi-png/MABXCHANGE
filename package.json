@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "npx --yes tsx src/lib/__tests__/ledger-safety.test.ts && npx --yes tsx src/lib/__tests__/ledger-posting.test.ts && npx --yes tsx src/lib/__tests__/account-helpers.test.ts && npx --yes tsx src/lib/__tests__/assets.test.ts",
+    "test": "npx --yes tsx src/lib/__tests__/ledger-safety.test.ts && npx --yes tsx src/lib/__tests__/ledger-posting.test.ts && npx --yes tsx src/lib/__tests__/account-helpers.test.ts && npx --yes tsx src/lib/__tests__/assets.test.ts && npx --yes tsx src/lib/__tests__/security-crypto.test.ts && npx --yes tsx src/lib/__tests__/security-hardening.test.ts && npx --yes tsx src/lib/__tests__/webauthn-config.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

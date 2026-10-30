@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: authz.error }, { status: authz.status });
   }
 
-  const rl = rateLimit({
+  const rl = await rateLimit({
     key: `totp:${authz.appUser.id}`,
     limit: 20,
     windowMs: 15 * 60_000,

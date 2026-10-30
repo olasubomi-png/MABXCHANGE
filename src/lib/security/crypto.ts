@@ -2,7 +2,17 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync, 
 
 const ALGO = "aes-256-gcm";
 
+export function assertSecurityEncryptionKeyConfigured(): void {
+  const secret = process.env.SECURITY_ENCRYPTION_KEY;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "SECURITY_ENCRYPTION_KEY must be set (min 32 characters) for TOTP encryption"
+    );
+  }
+}
+
 function getKey(): Buffer {
+
   const secret = process.env.SECURITY_ENCRYPTION_KEY;
   if (!secret || secret.length < 32) {
     throw new Error(

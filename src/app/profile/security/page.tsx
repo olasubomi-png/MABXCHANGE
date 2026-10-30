@@ -184,13 +184,38 @@ export default function SecurityPage() {
 
   async function removePasskey(id: string) {
     setBusy(true);
+    setError(null);
     try {
-      await fetch("/api/security/passkey/list", {
+      // Fresh passkey verification bound to remove_passkey purpose
+      const begin = await fetch("/api/security/passkey/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase: "begin", purpose: "remove_passkey" }),
+      }).then((r) => r.json());
+      if (begin.error) throw new Error(begin.error);
+      const assertion = await startAuthentication({
+        optionsJSON: begin.options,
+      });
+      const finish = await fetch("/api/security/passkey/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: "finish",
+          response: assertion,
+          purpose: "remove_passkey",
+        }),
+      }).then((r) => r.json());
+      if (finish.error) throw new Error(finish.error);
+      const res = await fetch("/api/security/passkey/list", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
+        body: JSON.stringify({ id, stepUpToken: finish.stepUpToken }),
+      }).then((r) => r.json());
+      if (res.error) throw new Error(res.error);
+      setInfo("Passkey removed after step-up verification.");
       await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not remove passkey");
     } finally {
       setBusy(false);
     }
@@ -198,14 +223,40 @@ export default function SecurityPage() {
 
   async function revokeAll() {
     setBusy(true);
+    setError(null);
     try {
-      await fetch("/api/security/devices", {
+      const begin = await fetch("/api/security/passkey/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phase: "begin", purpose: "revoke_all_devices" }),
+      }).then((r) => r.json());
+      if (begin.error) throw new Error(begin.error);
+      const assertion = await startAuthentication({
+        optionsJSON: begin.options,
+      });
+      const finish = await fetch("/api/security/passkey/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phase: "finish",
+          response: assertion,
+          purpose: "revoke_all_devices",
+        }),
+      }).then((r) => r.json());
+      if (finish.error) throw new Error(finish.error);
+      const res = await fetch("/api/security/devices", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: true }),
-      });
-      setInfo("All tracked devices marked revoked. Sign out other browsers manually if needed.");
+        body: JSON.stringify({ all: true, stepUpToken: finish.stepUpToken }),
+      }).then((r) => r.json());
+      if (res.error) throw new Error(res.error);
+      setInfo(
+        res.neonSessionNote ||
+          "Tracked devices revoked. Sign out on other browsers to clear Neon sessions."
+      );
       await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not revoke devices");
     } finally {
       setBusy(false);
     }

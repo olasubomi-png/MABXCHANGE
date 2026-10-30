@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Pool } from "@neondatabase/serverless";
 import { timingSafeEqual } from "crypto";
 import { SECURITY_MIGRATION_002_SQL } from "@/lib/security/migration-002-sql";
+import { SECURITY_MIGRATION_003_SQL } from "@/lib/security/migration-003-sql";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const sqlText = SECURITY_MIGRATION_002_SQL;
+  const sqlText = `${SECURITY_MIGRATION_002_SQL}\n${SECURITY_MIGRATION_003_SQL}`;
 
   const pool = new Pool({ connectionString: databaseUrl });
   const client = await pool.connect();
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
           "login_attempts",
           "webauthn_challenges",
           "step_up_tokens",
+          "rate_limit_buckets",
+          "totp_used_steps",
         ],
       ]
     );
@@ -90,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      migration: "002_account_security.sql",
+      migration: "002_account_security.sql + 003_security_hardening.sql",
       tablesPresent: created,
     });
   } catch (err) {
