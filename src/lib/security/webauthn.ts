@@ -12,19 +12,25 @@ import type {
   AuthenticatorTransportFuture,
   RegistrationResponseJSON,
 } from "./webauthn-types";
+import {
+  getWebAuthnExpectedOrigins,
+  getWebAuthnOrigin,
+  getWebAuthnRpId,
+  getWebAuthnRpName,
+} from "./webauthn-config";
 import { Pool } from "@neondatabase/serverless";
 import { randomToken } from "./crypto";
 
 function rpID(): string {
-  return process.env.WEBAUTHN_RP_ID || "localhost";
+  return getWebAuthnRpId();
 }
 
 function rpName(): string {
-  return process.env.WEBAUTHN_RP_NAME || "MABXCHANGE";
+  return getWebAuthnRpName();
 }
 
 function origin(): string {
-  return process.env.WEBAUTHN_ORIGIN || "http://localhost:3000";
+  return getWebAuthnOrigin();
 }
 
 function pool() {
@@ -139,7 +145,7 @@ export async function finishPasskeyRegistration(params: {
   const verification = await verifyRegistrationResponse({
     response: params.response as Parameters<typeof verifyRegistrationResponse>[0]["response"],
     expectedChallenge: clientData.challenge,
-    expectedOrigin: origin(),
+    expectedOrigin: getWebAuthnExpectedOrigins(),
     expectedRPID: rpID(),
   });
 
@@ -241,7 +247,7 @@ export async function finishPasskeyAuthentication(params: {
     const verification = await verifyAuthenticationResponse({
       response: params.response as Parameters<typeof verifyAuthenticationResponse>[0]["response"],
       expectedChallenge: clientData.challenge,
-      expectedOrigin: origin(),
+      expectedOrigin: getWebAuthnExpectedOrigins(),
       expectedRPID: rpID(),
       credential: {
         id: String(row.credential_id),
