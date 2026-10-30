@@ -11,6 +11,7 @@ import { issueStepUpToken, consumeStepUpToken } from "@/lib/security/step-up";
 import { logSecurityEvent } from "@/lib/security/events";
 import { rateLimit } from "@/lib/security/rate-limit";
 import QRCode from "qrcode";
+import { publicSecurityError } from "@/lib/security/db-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export async function GET() {
     return NextResponse.json(status);
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unavailable" },
+      { error: publicSecurityError(err, "Security service unavailable") },
       { status: 503 }
     );
   }
@@ -118,7 +119,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "TOTP error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: publicSecurityError(err, "Authenticator operation failed") }, { status: 400 });
   }
 }

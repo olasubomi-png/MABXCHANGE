@@ -7,6 +7,7 @@ import { requireAppUser } from "@/lib/security/session-user";
 import { issueStepUpToken } from "@/lib/security/step-up";
 import { logSecurityEvent } from "@/lib/security/events";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { publicSecurityError } from "@/lib/security/db-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,6 @@ export async function POST(req: NextRequest) {
       note: "Passkey verified for step-up. Primary session remains Neon Auth.",
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Passkey auth failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: publicSecurityError(err, "Passkey verification failed") }, { status: 400 });
   }
 }

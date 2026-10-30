@@ -1,6 +1,11 @@
--- Application-level account security (additive). Apply on a Neon branch first.
--- Does not modify ledger, balances, deposits, withdrawals, or trade tables.
+-- 002_account_security.sql
+-- Idempotent security tables for MABXCHANGE passkeys, TOTP, devices.
+-- Safe to re-run. Does NOT touch ledger, balances, deposits, withdrawals, or trades.
+-- Requires: app_users(id UUID) already present.
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Passkey / WebAuthn credentials (public key only — no biometrics)
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -13,10 +18,13 @@ CREATE TABLE IF NOT EXISTS webauthn_credentials (
   name TEXT NOT NULL DEFAULT 'Passkey',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_used_at TIMESTAMPTZ,
-  UNIQUE (credential_id)
+  CONSTRAINT webauthn_credentials_credential_id_key UNIQUE (credential_id)
 );
-CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user ON webauthn_credentials (user_id);
 
+CREATE INDEX IF NOT EXISTS idx_webauthn_credentials_user
+  ON webauthn_credentials (user_id);
+
+-- Encrypted TOTP secrets (AES-GCM ciphertext stored as text)
 CREATE TABLE IF NOT EXISTS totp_secrets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -25,9 +33,10 @@ CREATE TABLE IF NOT EXISTS totp_secrets (
   verified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id)
+  CONSTRAINT totp_secrets_user_id_key UNIQUE (user_id)
 );
 
+-- Hashed one-time recovery codes
 CREATE TABLE IF NOT EXISTS recovery_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -35,8 +44,15 @@ CREATE TABLE IF NOT EXISTS recovery_codes (
   used_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_recovery_codes_user ON recovery_codes (user_id);
 
+CREATE INDEX IF NOT EXISTS idx_recovery_codes_user
+  ON recovery_codes (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_recovery_codes_user_unused
+  ON recovery_codes (user_id)
+  WHERE used_at IS NULL;
+
+-- Device / session tracking (app-level)
 CREATE TABLE IF NOT EXISTS auth_devices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -48,10 +64,13 @@ CREATE TABLE IF NOT EXISTS auth_devices (
   first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   revoked_at TIMESTAMPTZ,
-  UNIQUE (user_id, device_fingerprint)
+  CONSTRAINT auth_devices_user_fingerprint_key UNIQUE (user_id, device_fingerprint)
 );
-CREATE INDEX IF NOT EXISTS idx_auth_devices_user ON auth_devices (user_id);
 
+CREATE INDEX IF NOT EXISTS idx_auth_devices_user
+  ON auth_devices (user_id);
+
+-- Security audit log (no secrets)
 CREATE TABLE IF NOT EXISTS security_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES app_users(id) ON DELETE SET NULL,
@@ -61,8 +80,11 @@ CREATE TABLE IF NOT EXISTS security_events (
   metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_security_events_user_created ON security_events (user_id, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_security_events_user_created
+  ON security_events (user_id, created_at DESC);
+
+-- Login attempt telemetry (hashed identifiers only)
 CREATE TABLE IF NOT EXISTS login_attempts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email_hash TEXT,
@@ -70,8 +92,11 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   success BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_created ON login_attempts (ip_hash, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_created
+  ON login_attempts (ip_hash, created_at DESC);
+
+-- WebAuthn challenge store (single-use, short TTL)
 CREATE TABLE IF NOT EXISTS webauthn_challenges (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
@@ -81,14 +106,24 @@ CREATE TABLE IF NOT EXISTS webauthn_challenges (
   consumed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_challenge ON webauthn_challenges (challenge);
 
+CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_challenge
+  ON webauthn_challenges (challenge);
+
+CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires
+  ON webauthn_challenges (expires_at);
+
+-- Step-up tokens after passkey/TOTP verification
 CREATE TABLE IF NOT EXISTS step_up_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-  token_hash TEXT NOT NULL UNIQUE,
+  token_hash TEXT NOT NULL,
   purpose TEXT NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   consumed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT step_up_tokens_token_hash_key UNIQUE (token_hash)
 );
+
+CREATE INDEX IF NOT EXISTS idx_step_up_tokens_user
+  ON step_up_tokens (user_id);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/security/session-user";
 import { listPasskeys, revokePasskey } from "@/lib/security/webauthn";
 import { logSecurityEvent } from "@/lib/security/events";
+import { publicSecurityError } from "@/lib/security/db-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET() {
     return NextResponse.json({ passkeys });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to list passkeys" },
+      { error: publicSecurityError(err, "Failed to load passkeys") },
       { status: 503 }
     );
   }

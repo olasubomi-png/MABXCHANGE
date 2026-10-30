@@ -6,6 +6,7 @@ import {
 } from "@/lib/security/webauthn";
 import { logSecurityEvent } from "@/lib/security/events";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { publicSecurityError } from "@/lib/security/db-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,6 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Passkey error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: publicSecurityError(err, "Passkey operation failed") }, { status: 400 });
   }
 }

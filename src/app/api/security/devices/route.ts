@@ -7,6 +7,7 @@ import {
   touchDevice,
 } from "@/lib/security/devices";
 import { logSecurityEvent } from "@/lib/security/events";
+import { publicSecurityError } from "@/lib/security/db-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ devices });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unavailable" },
+      { error: publicSecurityError(err, "Security service unavailable") },
       { status: 503 }
     );
   }
