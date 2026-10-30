@@ -53,10 +53,18 @@ assert(isSensitivePurpose("revoke_all_devices"), "revoke_all_devices purpose");
 assert(!isSensitivePurpose("not_a_purpose"), "reject unknown purpose");
 assert(SENSITIVE_PURPOSES.includes("remove_passkey"), "purpose list");
 
-// Wrong-purpose simulation
-const issuedPurpose = "remove_passkey";
-const attemptPurpose = "disable_2fa";
-assert(issuedPurpose !== attemptPurpose, "wrong-purpose must fail consume");
+// Wrong-purpose: consume must require exact purpose match
+function purposesMatch(issued: string, attempted: string): boolean {
+  return issued === attempted;
+}
+assert(
+  !purposesMatch("remove_passkey", "disable_2fa"),
+  "wrong-purpose must fail consume"
+);
+assert(
+  purposesMatch("remove_passkey", "remove_passkey"),
+  "matching purpose allowed"
+);
 
 // Progressive delay
 assert(progressiveDelayMs(0) === 0, "no delay");

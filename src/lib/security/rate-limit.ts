@@ -1,6 +1,7 @@
 /**
  * Database-backed rate limiting (works across Vercel isolates).
- * Falls back to in-process limiting only when DATABASE_URL is missing (local tests).
+ * On DB failure: fail closed (deny) for production safety.
+ * Memory path is only for unit tests / local without DATABASE_URL.
  */
 
 import { Pool } from "@neondatabase/serverless";
@@ -37,8 +38,9 @@ export function progressiveDelayMs(failureCount: number): number {
 }
 
 /**
- * Atomic rate limit using INSERT ... ON CONFLICT.
- * Window resets when window_start is older than windowMs.
+ * Atomic rate limit.
+ * First-request race: INSERT ... ON CONFLICT then re-read under the same transaction.
+ * Never returns ok:true on database errors when DATABASE_URL is set.
  */
 export async function rateLimit(params: {
   key: string;
@@ -47,6 +49,7 @@ export async function rateLimit(params: {
 }): Promise<{ ok: true } | { ok: false; retryAfterMs: number }> {
   const url = process.env.DATABASE_URL;
   if (!url) {
+    // Local/unit only — production always has DATABASE_URL on Vercel
     return memoryRateLimit(params);
   }
 
@@ -54,7 +57,16 @@ export async function rateLimit(params: {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const existing = await client.query(
+
+    // Serialize concurrent first inserts on the same key
+    await client.query(
+      `INSERT INTO rate_limit_buckets (bucket_key, hit_count, window_start, window_ms)
+       VALUES ($1, 0, NOW(), $2)
+       ON CONFLICT (bucket_key) DO NOTHING`,
+      [params.key, params.windowMs]
+    );
+
+    const locked = await client.query(
       `SELECT hit_count, window_start, window_ms
        FROM rate_limit_buckets
        WHERE bucket_key = $1
@@ -62,42 +74,42 @@ export async function rateLimit(params: {
       [params.key]
     );
 
-    const now = Date.now();
-    if (!existing.rows[0]) {
-      await client.query(
-        `INSERT INTO rate_limit_buckets (bucket_key, hit_count, window_start, window_ms)
-         VALUES ($1, 1, NOW(), $2)
-         ON CONFLICT (bucket_key) DO NOTHING`,
-        [params.key, params.windowMs]
-      );
-      await client.query("COMMIT");
-      return { ok: true };
+    if (!locked.rows[0]) {
+      await client.query("ROLLBACK");
+      // Table missing or unexpected — fail closed
+      return { ok: false, retryAfterMs: params.windowMs };
     }
 
-    const row = existing.rows[0];
+    const row = locked.rows[0];
     const windowStart = new Date(row.window_start).getTime();
     const windowMs = Number(row.window_ms) || params.windowMs;
+    const now = Date.now();
     const elapsed = now - windowStart;
 
+    let hitCount = Number(row.hit_count);
+
     if (elapsed >= windowMs) {
+      hitCount = 0;
       await client.query(
         `UPDATE rate_limit_buckets
-         SET hit_count = 1, window_start = NOW(), window_ms = $2
+         SET hit_count = 0, window_start = NOW(), window_ms = $2
          WHERE bucket_key = $1`,
         [params.key, params.windowMs]
       );
-      await client.query("COMMIT");
-      return { ok: true };
     }
 
-    const hitCount = Number(row.hit_count);
     if (hitCount >= params.limit) {
       await client.query("COMMIT");
-      return { ok: false, retryAfterMs: windowMs - elapsed };
+      return {
+        ok: false,
+        retryAfterMs: Math.max(0, windowMs - (elapsed >= windowMs ? 0 : elapsed)),
+      };
     }
 
     await client.query(
-      `UPDATE rate_limit_buckets SET hit_count = hit_count + 1 WHERE bucket_key = $1`,
+      `UPDATE rate_limit_buckets
+       SET hit_count = hit_count + 1
+       WHERE bucket_key = $1`,
       [params.key]
     );
     await client.query("COMMIT");
@@ -108,9 +120,8 @@ export async function rateLimit(params: {
     } catch {
       /* ignore */
     }
-    // Fail closed for security-sensitive endpoints would block users if table missing;
-    // fail open to memory only for availability, still limits per instance.
-    return memoryRateLimit(params);
+    // Fail closed: do not silently allow unlimited requests on DB errors
+    return { ok: false, retryAfterMs: params.windowMs };
   } finally {
     client.release();
     await pool.end();
