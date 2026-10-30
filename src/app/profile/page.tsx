@@ -32,6 +32,19 @@ export default async function ProfilePage() {
           </p>
         </div>
         <DemoBanner compact />
+
+      <Link
+        href="/profile/security"
+        className="mx-card flex items-center justify-between p-4 transition hover:bg-[var(--mx-surface-2)]"
+      >
+        <div>
+          <p className="font-semibold text-[var(--mx-text)]">Account Security</p>
+          <p className="text-xs text-[var(--mx-text-muted)]">
+            Passkeys, authenticator app, devices
+          </p>
+        </div>
+        <span className="text-[var(--mx-primary)] text-sm">Open</span>
+      </Link>
         <div className="mx-card space-y-4 p-6 text-center">
           <p className="text-sm text-[var(--mx-text-muted)]">
             You are not signed in.
@@ -94,6 +107,19 @@ export default async function ProfilePage() {
       </div>
 
       <DemoBanner compact />
+
+      <Link
+        href="/profile/security"
+        className="mx-card flex items-center justify-between p-4 transition hover:bg-[var(--mx-surface-2)]"
+      >
+        <div>
+          <p className="font-semibold text-[var(--mx-text)]">Account Security</p>
+          <p className="text-xs text-[var(--mx-text-muted)]">
+            Passkeys, authenticator app, devices
+          </p>
+        </div>
+        <span className="text-[var(--mx-primary)] text-sm">Open</span>
+      </Link>
 
       {dbError && (
         <div className="rounded-xl mx-banner-warning px-3.5 py-2.5 text-sm">

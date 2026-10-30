@@ -14,6 +14,7 @@ export const config = {
     "/swap/:path*",
     "/activity/:path*",
     "/rewards/:path*",
+    "/profile",
     "/profile/:path*",
     "/account/:path*",
   ],

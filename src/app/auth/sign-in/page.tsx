@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Loader2, Lock, Mail } from "lucide-react";
+import { Fingerprint, Loader2, Lock, Mail } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { DemoBanner } from "@/components/demo-banner";
 import { BrandMark } from "@/components/brand-mark";
@@ -246,7 +246,7 @@ function SignInForm() {
       </p>
 
       <p className="text-center text-xs text-[var(--mx-text-soft)]">
-        Trading and transfers are not enabled yet
+        Passkeys & authenticator: enable after sign-in under Profile → Account Security. Primary login uses Neon Auth (email/password or Google).
       </p>
     </div>
   );
