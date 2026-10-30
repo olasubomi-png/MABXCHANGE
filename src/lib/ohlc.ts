@@ -54,15 +54,41 @@ export type OhlcResult = {
   note?: string;
 };
 
-/** Kraken pair ids for USD markets */
+/** Kraken REST pair ids for USD markets (confirmed public pairs only). */
 const KRAKEN_PAIRS: Record<string, string> = {
   bitcoin: "XBTUSD",
   ethereum: "ETHUSD",
   solana: "SOLUSD",
   ripple: "XRPUSD",
   dogecoin: "DOGEUSD",
-  // BNB may be listed as BNBUSD on Kraken
   binancecoin: "BNBUSD",
+  cardano: "ADAUSD",
+  "avalanche-2": "AVAXUSD",
+  polkadot: "DOTUSD",
+  chainlink: "LINKUSD",
+  litecoin: "LTCUSD",
+  tron: "TRXUSD",
+  "bitcoin-cash": "BCHUSD",
+  "shiba-inu": "SHIBUSD",
+  sui: "SUIUSD",
+  stellar: "XLMUSD",
+  near: "NEARUSD",
+  aptos: "APTUSD",
+  uniswap: "UNIUSD",
+  pepe: "PEPEUSD",
+  "ethereum-classic": "ETCUSD",
+  cosmos: "ATOMUSD",
+  "internet-computer": "ICPUSD",
+  filecoin: "FILUSD",
+  aave: "AAVEUSD",
+  arbitrum: "ARBUSD",
+  optimism: "OPUSD",
+  "injective-protocol": "INJUSD",
+  "render-token": "RENDERUSD",
+  "fetch-ai": "FETUSD",
+  maker: "MKRUSD",
+  algorand: "ALGOUSD",
+  "sei-network": "SEIUSD",
 };
 
 /** Kraken interval query values in minutes */
@@ -407,6 +433,7 @@ export async function fetchOhlc(
   if (meta.symbol === "USDT" || meta.symbol === "USDC") {
     throw new Error("OHLC not available for stablecoins");
   }
+
 
   const errors: string[] = [];
 

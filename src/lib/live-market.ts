@@ -6,7 +6,7 @@ import type { AssetSymbol } from "./assets";
 import { SUPPORTED_ASSETS } from "./assets";
 import type { CandleInterval, OhlcCandle } from "./ohlc";
 
-/** Kraken WS / REST pair names for USD spot */
+/** Kraken WS pair names for USD spot (confirmed pairs only — others use delayed CoinGecko). */
 export const KRAKEN_WS_PAIRS: Partial<Record<string, string>> = {
   bitcoin: "XBT/USD",
   ethereum: "ETH/USD",
@@ -14,6 +14,33 @@ export const KRAKEN_WS_PAIRS: Partial<Record<string, string>> = {
   ripple: "XRP/USD",
   dogecoin: "DOGE/USD",
   binancecoin: "BNB/USD",
+  cardano: "ADA/USD",
+  "avalanche-2": "AVAX/USD",
+  polkadot: "DOT/USD",
+  chainlink: "LINK/USD",
+  litecoin: "LTC/USD",
+  tron: "TRX/USD",
+  "bitcoin-cash": "BCH/USD",
+  "shiba-inu": "SHIB/USD",
+  sui: "SUI/USD",
+  stellar: "XLM/USD",
+  near: "NEAR/USD",
+  aptos: "APT/USD",
+  uniswap: "UNI/USD",
+  pepe: "PEPE/USD",
+  "ethereum-classic": "ETC/USD",
+  cosmos: "ATOM/USD",
+  "internet-computer": "ICP/USD",
+  filecoin: "FIL/USD",
+  aave: "AAVE/USD",
+  arbitrum: "ARB/USD",
+  optimism: "OP/USD",
+  "injective-protocol": "INJ/USD",
+  "render-token": "RENDER/USD",
+  "fetch-ai": "FET/USD",
+  maker: "MKR/USD",
+  algorand: "ALGO/USD",
+  "sei-network": "SEI/USD",
 };
 
 export type ConnectionStatus = "live" | "reconnecting" | "delayed" | "offline";
@@ -57,11 +84,6 @@ export function coinIdForKrakenPair(pair: string): string | null {
   const map: Record<string, string> = {
     "XBT/USD": "bitcoin",
     "BTC/USD": "bitcoin",
-    "ETH/USD": "ethereum",
-    "SOL/USD": "solana",
-    "XRP/USD": "ripple",
-    "DOGE/USD": "dogecoin",
-    "BNB/USD": "binancecoin",
   };
   return map[pair.toUpperCase()] ?? map[pair] ?? null;
 }
